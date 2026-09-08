@@ -1,6 +1,6 @@
 # ando-kit
 
-**v2.2.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
+**v2.3.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
 
 Contenido original, escrito desde conocimiento general de la industria (debugging sistemático, arquitectura hexagonal/DDD, OWASP, Spec/Receipt-Driven Development, buenas prácticas de review). No contiene nada propietario de ningún empleador — **libre de compartir**.
 
@@ -172,6 +172,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 | `ando-engram-check-reminder.sh` | UserPromptSubmit | Recuerda consultar la memoria persistente (Engram) antes de afirmar "no tengo contexto de esto". |
 | `ando-prepush-check.sh` | PreToolUse `Bash` (`git push`) | Advierte sobre Conventional Commits y TODO/FIXME (el push procede). Y promueve a **bloqueo** las líneas `BLOCK:` del gate SDD. |
 | `ando-sdd-gate.sh` | *(helper de `ando-prepush-check.sh`, no se registra)* | Si estás en `feature/<id>` y existe `$ANDO_SPECS_DIR/<id>.md` sin `approved` → emite `BLOCK:` (el push no procede hasta aprobar/archivar la spec). Sin spec para esa rama → mudo. Opt-in vía `ANDO_SPECS_DIR`. |
+| `ando-rdd-reminder.sh` | PreToolUse `Bash` (`gh pr create` / `glab mr create`) | Si el branch `feature/<id>` no pasó por `rdd-review` (o cambió desde entonces), lo recuerda antes de crear el PR. La señal es `.git/ando-rdd-reviewed` que `rdd-review` deja al terminar. No bloquea. |
 | `ando-doctor-sessionstart.sh` | SessionStart | Corre `kit-doctor` al iniciar sesión. Silencioso si todo OK; avisa sólo si hay ⚠️/❌. Registrarlo aparte (ver snippet de `install.sh`). |
 | `ando-statusline-context.sh` | StatusLine | Modelo, directorio y % de contexto usado, con umbrales de color y aviso ⚠ DELEGAR en ≥85%. |
 
@@ -203,7 +204,7 @@ Algunas capacidades existen como **skill** (procedimiento que conducís vos) y c
 ## Adaptarlo a tu setup
 
 1. `cp CLAUDE.md.template ~/.claude/CLAUDE.md` y completá: herramientas y paths (`gh`/`glab`, package manager, runtime), stack de tus proyectos activos, quirks de testing local.
-2. Fusioná el snippet de `settings.json` que imprime `install.sh` (los 7 hooks + statusline).
+2. Fusioná el snippet de `settings.json` que imprime `install.sh` (los hooks + statusline).
 3. Opcional: `export ANDO_SPECS_DIR=<carpeta>` en tu shell rc y en `settings.json` → `env`, para activar el gate SDD.
 4. Memoria persistente: el kit asume un MCP tipo Engram. Si usás otro, ajustá la sección "Memoria persistente" del `CLAUDE.md`.
 

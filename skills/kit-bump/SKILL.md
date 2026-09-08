@@ -58,9 +58,9 @@ Delegar al agente `changelog-writer` via Agent tool con este input:
 - Tag destino: `v$NEW`
 
 El agente devuelve el bloque `## [X.Y.Z] — YYYY-MM-DD` agrupado por tipo. Insertarlo en
-`CHANGELOG.md` inmediatamente debajo de la línea `## [Unreleased]` (la entrada más nueva
-arriba). Si el kit todavía no tiene `CHANGELOG.md`, crearlo con ese formato (Keep a Changelog).
-No leer el git log completo en el contexto principal — para eso existe el agente.
+`CHANGELOG.md` como la entrada más nueva — arriba de la última `## [x.y.z]`, debajo del
+encabezado del archivo. Si el kit todavía no tiene `CHANGELOG.md`, crearlo con ese formato
+(Keep a Changelog). No leer el git log completo en el contexto principal — para eso existe el agente.
 
 Si el agente no devolvió un bloque o `CHANGELOG.md` no cambió después de la edición,
 **no agregar `CHANGELOG.md` al stage** e informar al usuario antes de continuar.

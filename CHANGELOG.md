@@ -3,6 +3,32 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.3.0] — 2026-09-08
+
+Pulido: consistencia, visibilidad y dos backstops.
+
+### Added
+
+- **`ando-rdd-reminder.sh`** (hook PreToolUse `Bash`) — al `gh pr create` / `glab mr create`
+  desde `feature/<id>`, recuerda correr `rdd-review` si el branch no pasó por ahí o cambió
+  desde entonces. La señal es `.git/ando-rdd-reviewed` (SHA que `rdd-review` deja al
+  terminar, en su nuevo Paso 7). No bloquea.
+- **`ando-statusline-context.sh`** — ahora muestra `kit vX.Y.Z` y, si tu local quedó atrás
+  del upstream, `↑N` en amarillo. Cacheado (máx 1 refresh cada 5 min); nunca corre `git`
+  en cada render ni hace `fetch`.
+- **`CONTRIBUTING.md`** — convenciones de skills/agents/hooks, checklist pre-commit, versionado.
+- **`work-unit-commits`** integrado al `CLAUDE.md`: regla explícita de planificar los commits
+  antes de un cambio multi-archivo.
+
+### Changed
+
+- **Umbral de contexto unificado a 80%** en `ando-context-threshold.sh`,
+  `ando-statusline-context.sh` (rojo + ⚠ DELEGAR) y `CLAUDE.md.template`. Antes el doc decía
+  "60-70%" y los hooks disparaban al 85%.
+- **`kit-doctor`** — chequea también `ando-rdd-reminder` entre los hooks registrados.
+- **`kit-bump`** — instrucción de inserción en `CHANGELOG.md` corregida (no asumía un
+  `## [Unreleased]` que el archivo no tiene).
+
 ## [2.2.0] — 2026-09-07
 
 Cambio de fondo en el flujo SDD: deja de ser un comando manual y pasa a ser

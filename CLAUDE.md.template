@@ -18,7 +18,8 @@
 1. **El hilo principal nunca ejecuta directamente tareas mecánicas de más de un paso** — comandos de build/upgrade, ediciones de código de una feature, exploración de código — aunque técnicamente pudiera hacerlo más rápido él mismo. Esto no es una sugerencia de eficiencia, es una regla dura: siempre se delega vía el Task/Agent tool. El rol del orquestador es decidir QUÉ hacer y sintetizar resultados, nunca ejecutar el trabajo en sí.
 2. **Toda tarea de más de un paso se delega a agentes.** Si existe un agente para eso, usarlo; si no existe y se va a repetir, crear uno nuevo y agregarlo al kit en vez de hacer el trabajo a mano cada vez.
 3. **Lecturas voluminosas siempre van a subagentes**: diffs grandes, logs, código desconocido, historial git. El orquestador recibe el resumen, nunca el material crudo.
-4. **Umbral de contexto: 60-70%.** Superado ese uso de la ventana (visible en la statusline), descargar el trabajo restante a agentes o cerrar la fase actual (commit + resumen) antes de seguir. No arrancar fases nuevas por encima del umbral.
+4. **Umbral de contexto: 80%.** Al llegar a ese uso de la ventana la statusline se pone roja y el hook `ando-context-threshold.sh` avisa. Por encima: descargar el trabajo restante a agentes o cerrar la fase actual (commit + resumen) antes de seguir. No arrancar fases nuevas por encima del umbral.
+5. **Commits como unidades de trabajo.** Antes de implementar un cambio multi-archivo, planificar los commits con la skill `work-unit-commits`: cada commit compila, propósito de una línea, el conjunto es una historia legible para el reviewer.
 
 **Claude nunca hace directamente lo siguiente.** Cada ítem tiene un agente/skill asignado — hacerlo en el contexto principal consume ventana y produce peores resultados que el especialista:
 
@@ -61,7 +62,7 @@ Las skills del flujo Spec/Receipt-Driven **no son comandos que el usuario tipee*
 
 **Cadena, toda orquestada:** `sdd-start` → `feature/<id>` → implementar (`test-strategist` para tests si aplica) → `rdd-review` → `spec-delta-apply <id>` (si hay delta) → PR → `sdd-archive <id>`.
 
-**Backstops (hooks):** `ando-delegation-reminder.sh` recuerda evaluar el Paso 0; `ando-sdd-gate.sh` (vía `ando-prepush-check.sh`) **bloquea `git push`** de `feature/<id>` si existe `$ANDO_SPECS_DIR/<id>.md` sin `approved`.
+**Backstops (hooks):** `ando-delegation-reminder.sh` recuerda evaluar el Paso 0; `ando-sdd-gate.sh` (vía `ando-prepush-check.sh`) **bloquea `git push`** de `feature/<id>` si existe `$ANDO_SPECS_DIR/<id>.md` sin `approved`; `ando-rdd-reminder.sh` recuerda `rdd-review` al crear el PR/MR.
 
 ## Protocolo AOP v2 — cómo responden los agentes
 

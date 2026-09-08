@@ -93,7 +93,7 @@ section "SETTINGS"
 SETTINGS="$CLAUDE/settings.json"
 if [ -f "$SETTINGS" ]; then
   ok "settings.json presente"
-  for h in ando-kit-sync ando-delegation-reminder ando-context-threshold ando-engram-check-reminder ando-prepush-check ando-statusline-context; do
+  for h in ando-kit-sync ando-delegation-reminder ando-context-threshold ando-engram-check-reminder ando-prepush-check ando-rdd-reminder ando-statusline-context; do
     grep -q "$h" "$SETTINGS" && ok "registrado: $h" || warn "hook $h instalado pero NO referenciado en settings.json"
   done
   grep -q "ando-doctor-sessionstart" "$SETTINGS" 2>/dev/null && ok "registrado: ando-doctor-sessionstart (SessionStart)" \

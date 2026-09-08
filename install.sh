@@ -77,7 +77,8 @@ cat << 'EOF'
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "$HOME/.local/bin/ando-prepush-check.sh", "timeout": 10 }
+          { "type": "command", "command": "$HOME/.local/bin/ando-prepush-check.sh", "timeout": 10 },
+          { "type": "command", "command": "$HOME/.local/bin/ando-rdd-reminder.sh", "timeout": 10 }
         ]
       }
     ],

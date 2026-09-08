@@ -175,6 +175,16 @@ Dispara únicamente en dos casos: el Paso 5 terminó en outcome `escalated`, o e
 
 Invocar como máximo una de las dos por escalación. Cuando esa escalación termine, emitir un **segundo** `mem_save` que referencie el candidate/branch del receipt del Paso 6 y agregue qué escalación se sumó y con qué resultado — no se edita el receipt ya guardado.
 
+## Paso 7 — Marcar el branch como revisado
+
+Si el skill corrió de verdad (cualquier tier, outcome `approved` o `escalated` — no en `NOT_RUN`), registrar el SHA revisado para que `ando-rdd-reminder.sh` sepa que este branch pasó por acá:
+
+```bash
+git rev-parse HEAD > "$(git rev-parse --git-dir)/ando-rdd-reviewed"
+```
+
+Si después se commitea algo más al branch, el marcador queda desactualizado y el hook vuelve a recordar re-correr la revisión — que es lo correcto.
+
 ## Output Contract
 
 Siempre retornar `## RDD Review — {candidate}` con:

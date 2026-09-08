@@ -1,7 +1,7 @@
 #!/bin/bash
 # ando-context-threshold.sh — Hook UserPromptSubmit
 #
-# Alerta de contexto al superar el umbral (default 85%): inyecta un systemMessage
+# Alerta de contexto al superar el umbral (default 80%): inyecta un systemMessage
 # para que Claude cierre la fase actual antes de arrancar trabajo nuevo.
 #
 # % de contexto = mismo cálculo que ando-statusline-context.sh (ver ese script para
@@ -18,7 +18,7 @@
 
 set -uo pipefail
 
-THRESHOLD_PCT="${ANDO_CONTEXT_THRESHOLD_PCT:-85}"
+THRESHOLD_PCT="${ANDO_CONTEXT_THRESHOLD_PCT:-80}"
 
 command -v jq >/dev/null 2>&1 || exit 0
 

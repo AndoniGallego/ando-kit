@@ -1,6 +1,6 @@
 #!/bin/bash
 # Statusline de Claude Code — modelo, directorio y % de contexto usado.
-# Visibilidad permanente del umbral de orquestación (85%): por encima, delegar o cerrar fase.
+# Visibilidad permanente del umbral de orquestación (80%): por encima, delegar o cerrar fase.
 #
 # % de contexto = (numerador / denominador), resueltos así:
 #
@@ -72,6 +72,7 @@ MAGENTA='\033[35m'
 RESET='\033[0m'
 BOLD='\033[1m'
 GRAY='\033[90m'
+YELLOW='\033[33m'
 
 # Formatear tokens para display (en miles)
 USAGE_DISPLAY=""
@@ -85,11 +86,11 @@ if [ -n "$TOKENS" ] && [ "$TOKENS" != "null" ] && [ "$TOKENS" -gt 0 ] 2>/dev/nul
   USAGE_DISPLAY=" ${GRAY}(${TOK_K}k/${WIN_DISPLAY})${RESET}"
 fi
 
-# Porcentaje: verde <60, amarillo 60-84, rojo ≥85
+# Porcentaje: verde <60, amarillo 60-79, rojo ≥80
 if [ "$PCT" = "?" ]; then
   PCT_COLOR='\033[90m'
   MARK=""
-elif [ "$PCT" -ge 85 ] 2>/dev/null; then
+elif [ "$PCT" -ge 80 ] 2>/dev/null; then
   PCT_COLOR='\033[31m'
   MARK=" ${BOLD}\033[31m⚠ DELEGAR${RESET}"
 elif [ "$PCT" -ge 60 ] 2>/dev/null; then
@@ -100,4 +101,27 @@ else
   MARK=""
 fi
 
-printf "${CYAN}[%s]${RESET} ${MAGENTA}%s${RESET} | Ctx orquestador: ${PCT_COLOR}%s%%${RESET}%b%b\n" "$MODEL" "$DIR" "$PCT" "$USAGE_DISPLAY" "$MARK"
+# --- Estado del kit: versión + drift vs upstream. Cacheado (máx 1 refresh / 5 min) —
+#     NUNCA corre git en cada render, y NUNCA hace fetch (sin red en la statusline):
+#     el "↑N" refleja lo que git ya sabe del remoto tras el último fetch/pull.
+KIT_MARK=""
+KIT_DIR="${ANDO_KIT_DIR:-}"
+if [ -n "$KIT_DIR" ] && [ -d "$KIT_DIR/.git" ]; then
+  KIT_CACHE="$HOME/.claude/.ando-kit-status"
+  if [ ! -f "$KIT_CACHE" ] || [ -n "$(find "$KIT_CACHE" -mmin +5 2>/dev/null)" ]; then
+    KV=$(tr -d '[:space:]' < "$KIT_DIR/VERSION" 2>/dev/null)
+    BEHIND=$(git -C "$KIT_DIR" rev-list --count 'HEAD..@{u}' 2>/dev/null)
+    OUT="v${KV:-?}"
+    [ -n "$BEHIND" ] && [ "$BEHIND" -gt 0 ] 2>/dev/null && OUT="$OUT ↑$BEHIND"
+    mkdir -p "$(dirname "$KIT_CACHE")" 2>/dev/null
+    printf '%s' "$OUT" > "$KIT_CACHE" 2>/dev/null
+  fi
+  KIT_TXT=$(cat "$KIT_CACHE" 2>/dev/null)
+  case "$KIT_TXT" in
+    "")   : ;;
+    *↑*)  KIT_MARK=" | ${YELLOW}kit ${KIT_TXT}${RESET}" ;;
+    *)    KIT_MARK=" | ${GRAY}kit ${KIT_TXT}${RESET}" ;;
+  esac
+fi
+
+printf "${CYAN}[%s]${RESET} ${MAGENTA}%s${RESET} | Ctx orquestador: ${PCT_COLOR}%s%%${RESET}%b%b%b\n" "$MODEL" "$DIR" "$PCT" "$USAGE_DISPLAY" "$MARK" "$KIT_MARK"
