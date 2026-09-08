@@ -1,6 +1,6 @@
 # ando-kit
 
-**v2.6.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
+**v2.7.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
 
 Contenido original, escrito desde conocimiento general de la industria (debugging sistemático, arquitectura hexagonal/DDD, OWASP, Spec/Receipt-Driven Development, buenas prácticas de review). No contiene nada propietario de ningún empleador — **libre de compartir**.
 
@@ -176,6 +176,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 | `ando-sdd-gate.sh` | *(helper de `ando-prepush-check.sh`, no se registra)* | Si estás en `feature/<id>` y existe `$ANDO_SPECS_DIR/<id>.md` sin `approved` → emite `BLOCK:` (el push no procede hasta aprobar/archivar la spec). Sin spec para esa rama → mudo. Opt-in vía `ANDO_SPECS_DIR`. |
 | `ando-rdd-reminder.sh` | PreToolUse `Bash` (`gh pr create` / `glab mr create`) | Si el branch `feature/<id>` no pasó por `rdd-review` (o cambió desde entonces), lo recuerda antes de crear el PR. La señal es `.git/ando-rdd-reviewed` que `rdd-review` deja al terminar. No bloquea. |
 | `ando-git-trust-check.sh` | PreToolUse `Bash` (cualquier `git ...`) | Defensa contra **GitSpawn** (ver sección "Seguridad" abajo). **Bloquea** si el `.git/config` o `.git/hooks/` del repo en juego tiene algo que ejecuta un programa arbitrario. Cache por repo + allowlist para los tuyos. |
+| `ando-kit-update-check.sh` | SessionStart | Sustituto de cron (Windows no tiene): como mucho 1 vez cada 12hs, hace `git fetch` del kit y avisa si hay novedades. Con `ANDO_KIT_AUTOUPDATE=1`, hace pull+install solo si el working tree está limpio. Ver "Autoupdate" abajo. |
 | `ando-doctor-sessionstart.sh` | SessionStart | Corre `kit-doctor` al iniciar sesión. Silencioso si todo OK; avisa sólo si hay ⚠️/❌. Registrarlo aparte (ver snippet de `install.sh`). |
 | `ando-statusline-context.sh` | StatusLine | Modelo, directorio y % de contexto usado, con umbrales de color y aviso ⚠ DELEGAR en ≥85%. |
 
@@ -236,6 +237,18 @@ Algunas capacidades existen como **skill** (procedimiento que conducís vos) y c
 - **Versionar:** skill `kit-bump` (o a mano: `VERSION` + `CHANGELOG.md` + tag `vX.Y.Z`).
 - **Lint:** `bash scripts/check.sh` valida frontmatter de skills/agents, envelope AOP v2 en agents, y `bash -n` (+ shellcheck si está) en hooks. Corre también en CI (`.github/workflows/check.yml`) en cada push a `main` y cada PR.
 - **Diagnóstico:** `/kit-doctor` (read-only, propone fixes).
+
+### Autoupdate (sin cron)
+
+Windows no tiene cron, y este kit no instala ningún daemon en background. `ando-kit-update-check.sh` (hook SessionStart) es el sustituto: en cada sesión, como mucho una vez cada `ANDO_KIT_UPDATE_CHECK_HOURS` horas (default 12), hace `git fetch` del kit y refresca el indicador `kit vX.Y.Z ↑N` de la statusline con datos reales — no la cifra pasiva que había antes de esto.
+
+Por defecto solo **avisa** si hay commits nuevos, con el comando exacto para traerlos. Si preferís que directamente se actualice solo:
+
+```bash
+export ANDO_KIT_AUTOUPDATE=1
+```
+
+Con la variable seteada, actualiza automáticamente **solo si el working tree del kit está limpio** (sin cambios sin commitear, ni siquiera archivos untracked) y el merge es fast-forward — si no, avisa por qué no lo hizo en vez de arriesgarse a pisar algo que estabas por guardar con `kit-sync`. `/kit-doctor` muestra cuándo fue el último chequeo y si el autoupdate está activo.
 
 ---
 

@@ -32,6 +32,14 @@ if [ -d "$KIT" ] && [ -d "$KIT/skills" ] && [ -d "$KIT/agents" ] && [ -d "$KIT/h
     BEHIND=$(git -C "$KIT" rev-list --count '@..@{u}' 2>/dev/null)
     [ -n "$BEHIND" ] && [ "$BEHIND" -gt 0 ] 2>/dev/null && warn "kit $BEHIND commit(s) atrás de su upstream (git -C \"$KIT\" pull)" || ok "kit git: al día con upstream (o sin upstream configurado)"
     [ -n "$(git -C "$KIT" status --porcelain 2>/dev/null)" ] && info "hay cambios sin commitear en el kit (normal si estás iterando)"
+    UPDATE_MARKER="$HOME/.claude/.ando-kit-update-check"
+    if [ -f "$UPDATE_MARKER" ]; then
+      LAST_CHECK_MIN=$(( ($(date +%s) - $(stat -c '%Y' "$UPDATE_MARKER" 2>/dev/null || stat -f '%m' "$UPDATE_MARKER" 2>/dev/null || echo 0)) / 60 ))
+      info "último chequeo de actualización: hace ${LAST_CHECK_MIN} min (cada ${ANDO_KIT_UPDATE_CHECK_HOURS:-12}hs vía ando-kit-update-check.sh)"
+    else
+      info "todavía no corrió ando-kit-update-check.sh en esta máquina (corre en el próximo SessionStart si está registrado)"
+    fi
+    [ "${ANDO_KIT_AUTOUPDATE:-0}" = "1" ] && info "ANDO_KIT_AUTOUPDATE=1 — el kit se actualiza solo cuando hay novedades y el working tree está limpio"
   else
     info "$KIT no es repo git — kit-bump/kit-sync funcionan parcial (sin tags ni historial)"
   fi
@@ -93,7 +101,7 @@ section "SETTINGS"
 SETTINGS="$CLAUDE/settings.json"
 if [ -f "$SETTINGS" ]; then
   ok "settings.json presente"
-  for h in ando-kit-sync ando-delegation-reminder ando-context-threshold ando-engram-check-reminder ando-prepush-check ando-rdd-reminder ando-git-trust-check ando-statusline-context; do
+  for h in ando-kit-sync ando-delegation-reminder ando-context-threshold ando-engram-check-reminder ando-prepush-check ando-rdd-reminder ando-git-trust-check ando-kit-update-check ando-statusline-context; do
     grep -q "$h" "$SETTINGS" && ok "registrado: $h" || warn "hook $h instalado pero NO referenciado en settings.json"
   done
   grep -q "ando-doctor-sessionstart" "$SETTINGS" 2>/dev/null && ok "registrado: ando-doctor-sessionstart (SessionStart)" \

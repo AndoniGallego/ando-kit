@@ -69,6 +69,7 @@ cat << 'EOF'
     "SessionStart": [
       {
         "hooks": [
+          { "type": "command", "command": "$HOME/.local/bin/ando-kit-update-check.sh", "timeout": 10 },
           { "type": "command", "command": "$HOME/.local/bin/ando-doctor-sessionstart.sh", "timeout": 15 }
         ]
       }
@@ -112,6 +113,10 @@ echo "Notas:"
 echo "  - ando-sdd-gate.sh NO se registra como hook — lo invoca ando-prepush-check.sh."
 echo "  - ando-doctor-sessionstart.sh es opcional: registralo como SessionStart (arriba) si querés"
 echo "    el chequeo de salud automático al arrancar. Corré /kit-doctor cuando quieras el detalle."
+echo "  - ando-kit-update-check.sh (sustituto de cron — Windows no tiene): en cada sesión, como"
+echo "    mucho una vez cada 12hs, hace 'git fetch' del kit y avisa si hay commits nuevos en"
+echo "    origin. Por defecto solo avisa; para que además haga pull+install solo (sólo con el"
+echo "    working tree del kit limpio), exportá: ANDO_KIT_AUTOUPDATE=1"
 echo "  - ando-git-trust-check.sh (defensa GitSpawn) BLOQUEA git en un repo cuyo .git/config o"
 echo "    .git/hooks/ trae algo que ejecuta un programa (fsmonitor/hooksPath/pager/editor/"
 echo "    sshCommand/askpass/credential.helper, o un hook ejecutable no-sample). Para tus propios"

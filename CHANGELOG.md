@@ -3,6 +3,27 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.7.0] — 2026-09-08
+
+El autoupdate que el aper-kit resolvía con un cron real — acá no hay cron (Windows),
+así que se resuelve enganchado al arranque de sesión, con rate-limit y el auto-pull
+real como opt-in explícito.
+
+### Added
+
+- **`ando-kit-update-check.sh`** (hook SessionStart) — como mucho una vez cada
+  `ANDO_KIT_UPDATE_CHECK_HOURS` horas (default 12), hace `git fetch` real del kit y
+  refresca `~/.claude/.ando-kit-status` (el cache que ya leía la statusline desde
+  v2.3.0, hasta ahora nunca actualizado por nada — el `↑N` podía quedar desactualizado
+  para siempre si nunca hacías `git pull` a mano). Avisa si hay commits nuevos.
+  `ANDO_KIT_AUTOUPDATE=1` (opt-in, default off) hace pull `--ff-only` + `install.sh`
+  automático, pero **solo si `git status --porcelain` del kit está vacío** (ni
+  modificados, ni staged, ni archivos untracked) — sobre working tree sucio, avisa por
+  qué no se actualizó en vez de arriesgarse a pisar algo en curso.
+- **`kit-doctor`** — reporta hace cuánto corrió el último chequeo de actualización, y
+  si `ANDO_KIT_AUTOUPDATE` está activo.
+- **README** — sección "Autoupdate" con el mecanismo completo.
+
 ## [2.6.0] — 2026-09-08
 
 Investigación puntual: ¿conviene controlar el navegador real del usuario (Claude in

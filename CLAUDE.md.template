@@ -130,6 +130,8 @@ El reviewer es overhead real — omitirlo en tareas mecánicas (1 archivo, renom
 - `/deploy-check` — interfaz fina sobre el agente `deploy-checker` para el checklist pre-push/pre-PR
 - `/kit-sync` — cómo mantener este kit actualizado y guardar cambios propios
 - `/kit-doctor` — chequeo read-only de la instalación del kit (sync, hooks, settings.json); read-only, propone fixes
+
+Autoupdate del kit (sustituto de cron — Windows no tiene): el hook `ando-kit-update-check.sh` hace `git fetch` como mucho 1 vez cada 12hs al arrancar sesión y avisa si hay novedades en origin. Por defecto solo avisa; `ANDO_KIT_AUTOUPDATE=1` (opcional) hace que además haga pull+install solo, y solo si el working tree del kit está limpio. Ver la sección "Autoupdate" del `README.md` del kit.
 - `/cognitive-doc-design` — diseñar documentación que reduce carga cognitiva (READMEs, RFCs, docs de review)
 - `/comment-writer` — redactar comentarios de PR/issue cálidos y directos
 - `/kit-bump` — bump de versión del kit (patch/minor/major), CHANGELOG y tag
