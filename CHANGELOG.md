@@ -3,6 +3,32 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.6.0] — 2026-09-08
+
+Investigación puntual: ¿conviene controlar el navegador real del usuario (Claude in
+Chrome) en vez de Playwright para testing/tareas? Conclusión (con benchmarks 2026
+citados en el README): no son intercambiables — Playwright gana en repetible/barato
+para CI, el navegador real gana en acceso a sesión/cuenta auténtica para tareas
+puntuales. Se agrega como skill nuevo, no como reemplazo de `e2e-test`.
+
+### Added
+
+- **Skill `browser-session`** — tareas puntuales en el navegador real del usuario ya
+  autenticado (Claude in Chrome), para lo que depende de una sesión/cuenta real
+  (dashboard de staging, SaaS, email) en vez de un browser limpio y descartable. Regla
+  dura: cualquier acción que cambie estado (submit, delete, compra) requiere
+  confirmación explícita antes — a diferencia de Playwright, acá el "browser
+  descartable" es tu identidad real. Nunca reusa una pestaña de otra sesión.
+- **README** — sección "Playwright vs tu navegador real" con la comparación completa
+  (fortalezas, costo en tokens, reproducibilidad) y tabla de cuándo usar cada uno.
+- **`ando-delegation-reminder.sh`** — nueva rama para pedidos que mencionan sesión/
+  cuenta/browser real.
+
+### Changed
+
+- **`e2e-test`** — nota cruzada a `browser-session` para el caso "esto depende de mi
+  sesión real".
+
 ## [2.5.0] — 2026-09-08
 
 Investigación de qué suma la comunidad a sus harnesses locales (hooks de notificación,

@@ -49,6 +49,11 @@ if echo "$MESSAGE" | grep -qE '\b(repo.?nuevo|no.?conozco.?(este|el).?(repo|c[o�
   HINTS+=("skill codebase-onboard → recorrido guiado (estructura, stack, flujos, convenciones) antes de tocar código; opcionalmente genera un CLAUDE.md.")
 fi
 
+# --- Tarea en tu sesión real de browser ---
+if echo "$MESSAGE" | grep -qE '\b(mi.?(sesi[oó]n|cuenta|browser|chrome)|ya.?loguead|donde.?estoy.?loguead|dashboard.?de.?staging|mi.?email)\b'; then
+  HINTS+=("skill browser-session → controla tu navegador real ya autenticado (Claude in Chrome), no un Playwright descartable. Antes de cualquier acción que cambie estado (submit, delete, compra), pedir confirmación.")
+fi
+
 # --- Frontend / componentes / estilos ---
 if echo "$MESSAGE" | grep -qE '\.(vue|jsx|tsx|svelte)\b|\b(componente|component|css|scss|estilos?|accesibilidad|a11y|render|re.?render|vuex|redux|pinia|store)\b'; then
   HINTS+=("agente frontend-reviewer → revisar componentes/estilos (estado, contratos de props/eventos, a11y, rendering). No hacer la revisión en el contexto principal.")

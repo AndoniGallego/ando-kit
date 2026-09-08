@@ -1,6 +1,6 @@
 # ando-kit
 
-**v2.5.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
+**v2.6.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
 
 Contenido original, escrito desde conocimiento general de la industria (debugging sistemático, arquitectura hexagonal/DDD, OWASP, Spec/Receipt-Driven Development, buenas prácticas de review). No contiene nada propietario de ningún empleador — **libre de compartir**.
 
@@ -129,6 +129,7 @@ crear el PR  →  sdd-archive <id>   →  status: done + receipt en Engram
 | `db-restore` | Importar un dump a una DB en Docker: detecta el dump, ofrece backup previo, **pide confirmación antes del DROP**, verifica el resultado. |
 | `e2e-test` | Tests e2e de navegador (Playwright, vía Docker) contra un dev server local: flujo de usuario (login, navegación, formularios) o auditoría (CSP, errores de consola, requests fallidos). |
 | `visual-regression` | Detecta cambios visuales no intencionales — screenshot vs baseline con el snapshot testing nativo de Playwright, vía el mismo agente `e2e-test-runner` (Modo C). Complementa a `e2e-test`: ese cubre comportamiento, este cubre pixeles. |
+| `browser-session` | Tareas puntuales en **tu navegador real ya logueado** (Claude in Chrome), no un Playwright descartable — cuando la tarea depende de una sesión/cuenta real. Ver "Playwright vs tu navegador real" abajo para cuándo usar cada uno. |
 
 ### Meta
 
@@ -199,6 +200,21 @@ echo "/ruta/a/tu/repo/.git" >> ~/.claude/.ando-git-trust-allow
 Un dato de 2026 (GitGuardian, *State of Secrets Sprawl*): los commits asistidos por IA filtran secretos reales aproximadamente **el doble** que la línea base humana — un agente genera scaffolding/config rápido, y es fácil que un token real se cuele sin que nadie lo mire línea por línea antes del push.
 
 Si tenés [`gitleaks`](https://github.com/gitleaks/gitleaks) instalado (`brew install gitleaks` / `scoop install gitleaks` / `apt install gitleaks`), `ando-prepush-check.sh` lo corre sobre los commits que vas a pushear y **bloquea el push** si encuentra un secreto real — con `--redact`, así el valor del secreto nunca aparece en el mensaje del hook. Sin `gitleaks` instalado, este chequeo simplemente no corre (no hay nag; `kit-doctor` lo señala como opcional). Un secreto ya en el historial no se arregla con un commit nuevo que lo borre — hay que reescribir el historial o rotar la credencial.
+
+## Playwright vs tu navegador real
+
+`e2e-test`/`visual-regression` (Playwright, vía Docker) y `browser-session` (Claude in Chrome, tu navegador real) no son intercambiables — cubren casos distintos, y elegir el equivocado sale caro de una forma u otra.
+
+Playwright **no ejecuta JS falso ni mockeado** — es un motor de browser real (Chromium/Firefox/WebKit) con el JS real del sitio en un DOM real. Lo que no tiene es *tu* sesión: arranca un perfil limpio, sin tus cookies, logins ni extensiones. Ahí es donde `browser-session` gana — controla el navegador que ya tenés abierto, con todo eso intacto.
+
+Pero esa ventaja tiene costo, medido en benchmarks reales de 2026: controlar un navegador real necesitó más pasos y más tokens que Playwright para la misma tarea, y falló de forma no reproducible en flujos de autenticación (no pudo acceder a URLs `chrome-extension://`, necesitó intervención manual). Por eso **nunca es la herramienta para un check que tiene que correr igual la próxima vez** — para eso Playwright, con su browser limpio y descartable, es estrictamente mejor: repetible, más barato, y sin depender de qué pestañas tengas abiertas en el momento.
+
+| | `browser-session` (navegador real) | `e2e-test` / `visual-regression` (Playwright) |
+|---|---|---|
+| Fortaleza | Sesión/cuenta real ya autenticada, cero configuración | Repetible — mismo resultado dos veces |
+| Costo | Más tokens, más pasos por tarea | Más barato, más determinista |
+| Para CI / regresión | No | Sí — es la herramienta para esto |
+| Para una tarea puntual en tu cuenta real | Sí | No aplica (no tiene tu sesión) |
 
 ## Skills vs agents — los pares
 

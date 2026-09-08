@@ -37,6 +37,7 @@
 | Testear un flujo en container | Escribir el script ad-hoc en el contexto | Delegar a `integration-test-runner` |
 | Verificar un flujo asíncrono (cola/worker/sink) | Inspeccionar colas y logs a mano | Delegar a `async-flow-verifier` |
 | Correr un test e2e de navegador (login, navegación, formulario) o auditar consola/CSP | Armar el script de Playwright ad-hoc en el contexto principal | Delegar a `e2e-test-runner` (skill `/e2e-test`) |
+| Probar algo en tu sesión real de browser (logueado en un dashboard/SaaS) | Usar Playwright, que no tiene tu sesión | Skill `/browser-session` |
 | Actualizar dependencias/versión de un framework | Correr `ng update`/similar manualmente en el hilo principal | Delegar a un agente dedicado (o hacerlo vos pero documentando por qué era la excepción justificada) |
 
 **El contexto principal es el orquestador.** Su trabajo es: leer el resultado del agente, decidir el siguiente paso, y coordinar. No procesar.
@@ -136,6 +137,8 @@ El reviewer es overhead real — omitirlo en tareas mecánicas (1 archivo, renom
 - `/resolve-version-conflict` — resolver conflictos de merge en el archivo de versión
 - `/db-restore` — importar un dump a una DB en Docker con backup previo y confirmación
 - `/e2e-test` — correr tests e2e de navegador (Playwright, vía Docker) contra un dev server local: flujo de usuario o auditoría de consola/CSP
+- `/visual-regression` — cambios visuales no intencionales, screenshot vs baseline
+- `/browser-session` — tareas puntuales en tu navegador real ya logueado (no Playwright)
 
 ## Agents disponibles en este kit
 

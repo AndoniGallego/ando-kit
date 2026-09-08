@@ -12,6 +12,8 @@ Invocar cuando el usuario diga algo como:
 
 Este skill es el complemento de browser de `integration-test-runner` (que cubre backend: invocación directa o HTTP dentro de un container). Si lo que hay que verificar es una llamada HTTP o un flujo dentro de un container sin renderizar nada en el browser, ese es el agente correcto, no este.
 
+Si la tarea depende de **tu sesión real** (logueado en un dashboard, un SaaS, tu cuenta) en vez de un flujo repetible contra un browser limpio, usar `browser-session` en su lugar — controla tu navegador real, no un Playwright descartable.
+
 ## Por qué Playwright
 
 Playwright es el estándar de facto para e2e en frontend moderno (incluido Angular) desde la deprecación de Protractor: cross-browser real (Chromium/Firefox/WebKit) con binarios propios en vez de depender de drivers externos, auto-wait que elimina la mayoría del flakiness de timing, paralelización nativa sin costo de SaaS, y soporte multi-tab/multi-origin. Cypress sigue siendo una alternativa válida (mejor debugging interactivo, testing de componentes), pero para un flujo e2e genérico headless en CI/local, Playwright es la opción por defecto de este kit.
