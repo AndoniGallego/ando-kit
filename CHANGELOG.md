@@ -3,6 +3,31 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.4.0] — 2026-09-08
+
+Defensa contra **GitSpawn** (Manifold Security, jun-2026): una clase de vulnerabilidad
+real en agentes de código con IA (Claude Code, Codex, Cursor, Grok Build, Goose, Hermes
+Agent, Qwen Code) donde un repo ejecuta un programa arbitrario apenas el agente corre su
+primer `git status`/`diff`/`add`, vía claves de `.git/config` como `core.fsmonitor` que
+nombran un programa.
+
+### Added
+
+- **`ando-git-trust-check.sh`** (hook PreToolUse `Bash`, cualquier comando `git`) —
+  audita `.git/config` y `.git/hooks/` del repo en juego **leyéndolos como archivos**
+  (nunca invoca `git` para el chequeo, para no arriesgarse a disparar lo que busca).
+  Si encuentra `fsmonitor`/`hooksPath`/`pager`/`editor`/`sshCommand`/`askpass`/
+  `credential.helper` seteados a algo no-booleano, o un hook ejecutable no-`.sample`,
+  **bloquea** (`permissionDecision: deny`). Cachea el veredicto por repo (invalida al
+  cambiar `.git/config`) y respeta un allowlist (`~/.claude/.ando-git-trust-allow`) para
+  repos propios que legítimamente usan alguna de estas claves (ej. Watchman).
+- **README** — sección "Seguridad" explicando el mecanismo y la defensa, incluida la
+  advertencia sobre el segundo vector de GitSpawn en `/code-review ultra` (Claude Code),
+  confirmado sin parchear públicamente al momento de escribir esto.
+- **`CLAUDE.md.template`** (y `~/.claude/CLAUDE.md`) — sección "Seguridad — GitSpawn".
+- **`kit-doctor`** — chequea que `ando-git-trust-check.sh` esté instalado y reporta el
+  tamaño del allowlist.
+
 ## [2.3.0] — 2026-09-08
 
 Pulido: consistencia, visibilidad y dos backstops.

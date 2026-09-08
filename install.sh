@@ -77,6 +77,7 @@ cat << 'EOF'
       {
         "matcher": "Bash",
         "hooks": [
+          { "type": "command", "command": "$HOME/.local/bin/ando-git-trust-check.sh", "timeout": 10 },
           { "type": "command", "command": "$HOME/.local/bin/ando-prepush-check.sh", "timeout": 10 },
           { "type": "command", "command": "$HOME/.local/bin/ando-rdd-reminder.sh", "timeout": 10 }
         ]
@@ -111,6 +112,11 @@ echo "Notas:"
 echo "  - ando-sdd-gate.sh NO se registra como hook — lo invoca ando-prepush-check.sh."
 echo "  - ando-doctor-sessionstart.sh es opcional: registralo como SessionStart (arriba) si querés"
 echo "    el chequeo de salud automático al arrancar. Corré /kit-doctor cuando quieras el detalle."
+echo "  - ando-git-trust-check.sh (defensa GitSpawn) BLOQUEA git en un repo cuyo .git/config o"
+echo "    .git/hooks/ trae algo que ejecuta un programa (fsmonitor/hooksPath/pager/editor/"
+echo "    sshCommand/askpass/credential.helper, o un hook ejecutable no-sample). Para tus propios"
+echo "    repos que legítimamente usan alguna de estas claves (ej. Watchman):"
+echo "    echo \"/ruta/a/tu/repo/.git\" >> ~/.claude/.ando-git-trust-allow"
 
 echo ""
 echo "== Listo =="

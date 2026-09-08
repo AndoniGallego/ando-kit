@@ -1,6 +1,6 @@
 # ando-kit
 
-**v2.3.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
+**v2.4.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
 
 Contenido original, escrito desde conocimiento general de la industria (debugging sistemático, arquitectura hexagonal/DDD, OWASP, Spec/Receipt-Driven Development, buenas prácticas de review). No contiene nada propietario de ningún empleador — **libre de compartir**.
 
@@ -173,10 +173,25 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 | `ando-prepush-check.sh` | PreToolUse `Bash` (`git push`) | Advierte sobre Conventional Commits y TODO/FIXME (el push procede). Y promueve a **bloqueo** las líneas `BLOCK:` del gate SDD. |
 | `ando-sdd-gate.sh` | *(helper de `ando-prepush-check.sh`, no se registra)* | Si estás en `feature/<id>` y existe `$ANDO_SPECS_DIR/<id>.md` sin `approved` → emite `BLOCK:` (el push no procede hasta aprobar/archivar la spec). Sin spec para esa rama → mudo. Opt-in vía `ANDO_SPECS_DIR`. |
 | `ando-rdd-reminder.sh` | PreToolUse `Bash` (`gh pr create` / `glab mr create`) | Si el branch `feature/<id>` no pasó por `rdd-review` (o cambió desde entonces), lo recuerda antes de crear el PR. La señal es `.git/ando-rdd-reviewed` que `rdd-review` deja al terminar. No bloquea. |
+| `ando-git-trust-check.sh` | PreToolUse `Bash` (cualquier `git ...`) | Defensa contra **GitSpawn** (ver sección "Seguridad" abajo). **Bloquea** si el `.git/config` o `.git/hooks/` del repo en juego tiene algo que ejecuta un programa arbitrario. Cache por repo + allowlist para los tuyos. |
 | `ando-doctor-sessionstart.sh` | SessionStart | Corre `kit-doctor` al iniciar sesión. Silencioso si todo OK; avisa sólo si hay ⚠️/❌. Registrarlo aparte (ver snippet de `install.sh`). |
 | `ando-statusline-context.sh` | StatusLine | Modelo, directorio y % de contexto usado, con umbrales de color y aviso ⚠ DELEGAR en ≥85%. |
 
 ---
+
+## Seguridad — defensa contra GitSpawn
+
+**GitSpawn** (Manifold Security, jun-2026) es una clase de vulnerabilidad real en agentes de código con IA (Claude Code, Codex, Cursor, Grok Build, Goose, Hermes Agent, Qwen Code): un repo puede traer en su `.git/config` una clave como `core.fsmonitor` que **nombra un programa arbitrario**, y Git lo ejecuta en cualquier operación que refresque el índice — `git status`, `git diff`, `git add`. Exactamente lo que un agente corre solo, sin que nadie lo pida, para "entender el repo". No hace falta que hagas nada: alcanza con que el agente corra su primer `git status` en un directorio cuyo `.git` ya traía esto — típicamente porque el repo llegó como carpeta/zip/`cp -r` en vez de un `git clone <url>` genuino (clonar por URL no transmite el `.git/config` del origen).
+
+`ando-git-trust-check.sh` intercepta **cualquier comando `git`** (lo dispare el usuario o el modelo) y, antes de dejarlo pasar, audita `.git/config` y `.git/hooks/` del repo en juego **leyéndolos como archivos** — nunca invoca al propio `git` para el chequeo, para no arriesgarse a disparar lo que está buscando. Si encuentra `fsmonitor`, `hooksPath`, `pager`, `editor`, `sshCommand`, `askpass` o `credential.helper` seteados a algo que no sea un booleano trivial, o un hook ejecutable que no es el `.sample` por defecto, **bloquea** el comando.
+
+Cachea el veredicto por repo (no re-audita hasta que cambie `.git/config`) y respeta un allowlist para tus propios repos que legítimamente usan alguna de estas claves (ej. `fsmonitor=true` con Watchman en un monorepo grande):
+
+```bash
+echo "/ruta/a/tu/repo/.git" >> ~/.claude/.ando-git-trust-allow
+```
+
+**Esto es defensa en profundidad, no la única barrera.** Sigue valiendo la higiene básica: no abras con un agente de IA un repo que no clonaste vos mismo por URL, y mirá `.git/config` a mano si tenés dudas. Y ojo con `/code-review ultra` (`claude ultrareview`) específicamente — al momento de escribir esto tiene un segundo vector de GitSpawn (una clave de git config distinta, no revelada públicamente por los investigadores) confirmado sin parchear; evitalo contra repos que no controlás hasta que haya confirmación de fix.
 
 ## Skills vs agents — los pares
 

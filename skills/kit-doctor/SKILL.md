@@ -31,6 +31,7 @@ Salida: secciones con `✅` / `⚠️` / `❌` y un resumen. Exit code 1 si hay 
 | `no es repo git` | `git init` en el kit si querés que `kit-bump`/`kit-sync` funcionen del todo |
 | `ANDO_SPECS_DIR apunta a un dir inexistente` | Crear el dir o corregir la variable; o quitarla si no usás el gate SDD |
 | `Engram MCP no conectado` | Opcional — reiniciar Claude Code, o instalar el plugin de memoria si lo querés |
+| `ando-git-trust-check.sh no instalado` | `bash "$ANDO_KIT_DIR/install.sh"` — sin esto no hay defensa contra GitSpawn (`.git/config` de terceros ejecutando programas vía `git status`/`diff`/`add`) |
 
 ## Paso 3 — Reporte al usuario
 
