@@ -127,6 +127,11 @@ if [ -x "$HOOKS_BIN/ando-git-trust-check.sh" ]; then
 else
   fail "ando-git-trust-check.sh no instalado — sin defensa contra GitSpawn (core.fsmonitor y similares en .git/config de terceros)"
 fi
+if command -v gitleaks >/dev/null 2>&1; then
+  ok "gitleaks disponible ($(gitleaks version 2>/dev/null | head -1)) — chequeo de secretos activo en ando-prepush-check.sh"
+else
+  info "gitleaks no instalado (opcional) — sin chequeo de secretos en el pre-push. brew install gitleaks / scoop install gitleaks / apt install gitleaks"
+fi
 
 # --- OPCIONALES ---
 section "OPCIONALES"

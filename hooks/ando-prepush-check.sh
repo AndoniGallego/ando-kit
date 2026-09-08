@@ -6,11 +6,14 @@
 #   • ADVERTENCIAS (el push procede): Conventional Commits en el último commit,
 #     TODO/FIXME en los archivos cambiados, y las advertencias no-duras del gate SDD.
 #
-#   • BLOQUEO (el push NO procede): sólo el gate SDD, y sólo en un caso muy acotado —
-#     estás en `feature/<id>` y existe una spec `$ANDO_SPECS_DIR/<id>.md` que NO está
-#     `approved`. Es un estado auto-infligido y de resolución inmediata (aprobá tu
-#     propia spec, o archivala si decidiste no seguir SDD). Cualquier otra cosa es
-#     advertencia, nunca bloqueo.
+#   • BLOQUEO (el push NO procede), en dos casos acotados:
+#     1. Gate SDD: estás en `feature/<id>` y existe una spec `$ANDO_SPECS_DIR/<id>.md`
+#        que NO está `approved`. Estado auto-infligido y de resolución inmediata
+#        (aprobá tu propia spec, o archivala si decidiste no seguir SDD).
+#     2. Gitleaks (si está instalado) encuentra un secreto real en los commits a
+#        pushear. Un secreto en el remoto es difícil de deshacer del todo (queda en el
+#        historial aunque se rote la credencial) — bloquear acá es mucho más barato.
+#     Cualquier otra cosa es advertencia, nunca bloqueo.
 #
 # El hook nunca debe romper el flujo por un error propio: cualquier fallo → exit 0.
 
@@ -66,6 +69,23 @@ if [ -n "$CHANGED_FILES" ]; then
   if [ -n "$TODO_HITS" ]; then
     HITS_INLINE=$(echo "$TODO_HITS" | tr '\n' ' ')
     WARNINGS+=("TODO/FIXME encontrado en: ${HITS_INLINE}")
+  fi
+fi
+
+# 3. Gitleaks — secretos reales en los commits a pushear. Opt-in silencioso: si no
+#    está instalado, este chequeo simplemente no corre (recomendar instalarlo es tarea
+#    de kit-doctor, no de este hook en cada push).
+if command -v gitleaks >/dev/null 2>&1; then
+  if [ -n "$DEFAULT_BRANCH" ]; then
+    GITLEAKS_RANGE="origin/${DEFAULT_BRANCH}..HEAD"
+  else
+    GITLEAKS_RANGE="HEAD~1..HEAD"
+  fi
+  GITLEAKS_OUT=$(gitleaks detect --source "$REPO_DIR" --log-opts "$GITLEAKS_RANGE" --no-banner --redact 2>&1)
+  GITLEAKS_EXIT=$?
+  if [ "$GITLEAKS_EXIT" -eq 1 ]; then
+    LEAK_COUNT=$(printf '%s' "$GITLEAKS_OUT" | grep -c '^Finding:' 2>/dev/null)
+    ERRORS+=("gitleaks encontró ${LEAK_COUNT:-un} secreto(s) en los commits a pushear ($GITLEAKS_RANGE). Corré 'gitleaks detect --source . --log-opts \"$GITLEAKS_RANGE\" -v' para el detalle. NO alcanza con un commit nuevo que lo borre — el secreto queda en el historial; hay que reescribirlo (o rotar la credencial si ya se pusheó antes) antes de este push.")
   fi
 fi
 

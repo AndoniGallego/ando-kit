@@ -3,6 +3,31 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.5.0] — 2026-09-08
+
+Investigación de qué suma la comunidad a sus harnesses locales (hooks de notificación,
+MCP populares, tendencias de browser-use) → dos mejoras concretas: defensa de secretos
+en el pre-push, y regresión visual como modo de testing.
+
+### Added
+
+- **Gitleaks en `ando-prepush-check.sh`** — si tenés `gitleaks` instalado, escanea los
+  commits a pushear y **bloquea** si encuentra un secreto real (con `--redact`, el valor
+  nunca aparece en el mensaje del hook). Opt-in silencioso: sin `gitleaks` instalado, el
+  chequeo no corre. Motivo (GitGuardian, *State of Secrets Sprawl* 2026): los commits
+  asistidos por IA filtran secretos ~2x más que la línea base humana.
+- **Skill `visual-regression`** — detecta cambios visuales no intencionales (screenshot
+  vs baseline, snapshot testing nativo de Playwright). Complementa a `e2e-test`: ese
+  cubre comportamiento, este cubre píxeles.
+- **`agents/e2e-test-runner.md`** — nuevo **Modo C** (regresión visual): crea baseline
+  en la primera corrida, compara en las siguientes, nunca pisa un baseline sin
+  confirmación explícita del usuario.
+- **`kit-doctor`** — reporta si `gitleaks` está disponible (opcional, informativo).
+
+### Changed
+
+- README: sección "Seguridad" ahora cubre GitSpawn y gitleaks juntos.
+
 ## [2.4.0] — 2026-09-08
 
 Defensa contra **GitSpawn** (Manifold Security, jun-2026): una clase de vulnerabilidad

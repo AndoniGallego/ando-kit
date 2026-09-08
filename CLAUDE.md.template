@@ -167,9 +167,9 @@ Si instalaste algún sistema de memoria cross-sesión (Engram u otro MCP similar
 - Al iniciar una tarea nueva, consultar el índice de memoria si existe.
 - Guardar decisiones de arquitectura, bugs resueltos no triviales, y preferencias que yo te vaya corrigiendo — sin que te lo pida cada vez.
 
-## Seguridad — GitSpawn
+## Seguridad
 
-`ando-git-trust-check.sh` bloquea cualquier `git ...` en un repo cuyo `.git/config`/`.git/hooks` tenga algo que ejecute un programa (`fsmonitor`, `hooksPath`, `pager`, `editor`, `sshCommand`, `askpass`, `credential.helper`, hooks no-sample) — defensa contra GitSpawn (repos que ejecutan código apenas el agente corre su primer `git status`). Allowlist para tus propios repos: `~/.claude/.ando-git-trust-allow`. Ver la sección "Seguridad" del `README.md` del kit para el detalle.
+`ando-git-trust-check.sh` bloquea cualquier `git ...` en un repo cuyo `.git/config`/`.git/hooks` tenga algo que ejecute un programa (`fsmonitor`, `hooksPath`, `pager`, `editor`, `sshCommand`, `askpass`, `credential.helper`, hooks no-sample) — defensa contra GitSpawn (repos que ejecutan código apenas el agente corre su primer `git status`). Allowlist para tus propios repos: `~/.claude/.ando-git-trust-allow`. Si tenés `gitleaks` instalado, `ando-prepush-check.sh` también bloquea el push si encuentra un secreto real en los commits (opcional, se salta si no está). Ver la sección "Seguridad" del `README.md` del kit para el detalle.
 
 ## Git
 

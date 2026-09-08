@@ -1,6 +1,6 @@
 # ando-kit
 
-**v2.4.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
+**v2.5.0** · Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto.
 
 Contenido original, escrito desde conocimiento general de la industria (debugging sistemático, arquitectura hexagonal/DDD, OWASP, Spec/Receipt-Driven Development, buenas prácticas de review). No contiene nada propietario de ningún empleador — **libre de compartir**.
 
@@ -128,6 +128,7 @@ crear el PR  →  sdd-archive <id>   →  status: done + receipt en Engram
 |---|---|
 | `db-restore` | Importar un dump a una DB en Docker: detecta el dump, ofrece backup previo, **pide confirmación antes del DROP**, verifica el resultado. |
 | `e2e-test` | Tests e2e de navegador (Playwright, vía Docker) contra un dev server local: flujo de usuario (login, navegación, formularios) o auditoría (CSP, errores de consola, requests fallidos). |
+| `visual-regression` | Detecta cambios visuales no intencionales — screenshot vs baseline con el snapshot testing nativo de Playwright, vía el mismo agente `e2e-test-runner` (Modo C). Complementa a `e2e-test`: ese cubre comportamiento, este cubre pixeles. |
 
 ### Meta
 
@@ -158,7 +159,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 | `deploy-checker` | Corre todas las validaciones pre-deploy en aislamiento y devuelve un reporte ✅/❌/⚠️ por check. |
 | `integration-test-runner` | Test de integración dentro de un container (invocación directa o HTTP/curl), captura estado antes/después, hace cleanup, reporta PASS/FAIL sin volcar logs. |
 | `async-flow-verifier` | Verifica que un evento se propagó por un pipeline `cola → worker → sink` por checkpoints tipados (PASS/FAIL/TIMEOUT), sin volcar payloads. |
-| `e2e-test-runner` | Corre un flujo e2e de navegador (Playwright headless) o una auditoría de consola/CSP, con capturas sólo en fallos. |
+| `e2e-test-runner` | Corre un flujo e2e de navegador (Playwright headless), una auditoría de consola/CSP, o una regresión visual (screenshot vs baseline), con capturas sólo en fallos/diffs. |
 
 ---
 
@@ -170,7 +171,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 | `ando-delegation-reminder.sh` | UserPromptSubmit | Detecta de qué trata tu mensaje y le recuerda al orquestador qué skill/agent delegar — y, si hay intención de implementar, que evalúe el Paso 0 del flujo SDD. Silencioso si no matchea nada. |
 | `ando-context-threshold.sh` | UserPromptSubmit | Al superar el 85% de la ventana de contexto, inyecta un aviso para cerrar la fase actual (commit + resumen a Engram) antes de arrancar trabajo nuevo. |
 | `ando-engram-check-reminder.sh` | UserPromptSubmit | Recuerda consultar la memoria persistente (Engram) antes de afirmar "no tengo contexto de esto". |
-| `ando-prepush-check.sh` | PreToolUse `Bash` (`git push`) | Advierte sobre Conventional Commits y TODO/FIXME (el push procede). Y promueve a **bloqueo** las líneas `BLOCK:` del gate SDD. |
+| `ando-prepush-check.sh` | PreToolUse `Bash` (`git push`) | Advierte sobre Conventional Commits y TODO/FIXME (el push procede). Promueve a **bloqueo** las líneas `BLOCK:` del gate SDD, y bloquea directo si `gitleaks` (opcional, si está instalado) encuentra un secreto real en los commits a pushear. |
 | `ando-sdd-gate.sh` | *(helper de `ando-prepush-check.sh`, no se registra)* | Si estás en `feature/<id>` y existe `$ANDO_SPECS_DIR/<id>.md` sin `approved` → emite `BLOCK:` (el push no procede hasta aprobar/archivar la spec). Sin spec para esa rama → mudo. Opt-in vía `ANDO_SPECS_DIR`. |
 | `ando-rdd-reminder.sh` | PreToolUse `Bash` (`gh pr create` / `glab mr create`) | Si el branch `feature/<id>` no pasó por `rdd-review` (o cambió desde entonces), lo recuerda antes de crear el PR. La señal es `.git/ando-rdd-reviewed` que `rdd-review` deja al terminar. No bloquea. |
 | `ando-git-trust-check.sh` | PreToolUse `Bash` (cualquier `git ...`) | Defensa contra **GitSpawn** (ver sección "Seguridad" abajo). **Bloquea** si el `.git/config` o `.git/hooks/` del repo en juego tiene algo que ejecuta un programa arbitrario. Cache por repo + allowlist para los tuyos. |
@@ -179,7 +180,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 
 ---
 
-## Seguridad — defensa contra GitSpawn
+## Seguridad
 
 **GitSpawn** (Manifold Security, jun-2026) es una clase de vulnerabilidad real en agentes de código con IA (Claude Code, Codex, Cursor, Grok Build, Goose, Hermes Agent, Qwen Code): un repo puede traer en su `.git/config` una clave como `core.fsmonitor` que **nombra un programa arbitrario**, y Git lo ejecuta en cualquier operación que refresque el índice — `git status`, `git diff`, `git add`. Exactamente lo que un agente corre solo, sin que nadie lo pida, para "entender el repo". No hace falta que hagas nada: alcanza con que el agente corra su primer `git status` en un directorio cuyo `.git` ya traía esto — típicamente porque el repo llegó como carpeta/zip/`cp -r` en vez de un `git clone <url>` genuino (clonar por URL no transmite el `.git/config` del origen).
 
@@ -192,6 +193,12 @@ echo "/ruta/a/tu/repo/.git" >> ~/.claude/.ando-git-trust-allow
 ```
 
 **Esto es defensa en profundidad, no la única barrera.** Sigue valiendo la higiene básica: no abras con un agente de IA un repo que no clonaste vos mismo por URL, y mirá `.git/config` a mano si tenés dudas. Y ojo con `/code-review ultra` (`claude ultrareview`) específicamente — al momento de escribir esto tiene un segundo vector de GitSpawn (una clave de git config distinta, no revelada públicamente por los investigadores) confirmado sin parchear; evitalo contra repos que no controlás hasta que haya confirmación de fix.
+
+### Secretos en el pre-push (gitleaks, opcional)
+
+Un dato de 2026 (GitGuardian, *State of Secrets Sprawl*): los commits asistidos por IA filtran secretos reales aproximadamente **el doble** que la línea base humana — un agente genera scaffolding/config rápido, y es fácil que un token real se cuele sin que nadie lo mire línea por línea antes del push.
+
+Si tenés [`gitleaks`](https://github.com/gitleaks/gitleaks) instalado (`brew install gitleaks` / `scoop install gitleaks` / `apt install gitleaks`), `ando-prepush-check.sh` lo corre sobre los commits que vas a pushear y **bloquea el push** si encuentra un secreto real — con `--redact`, así el valor del secreto nunca aparece en el mensaje del hook. Sin `gitleaks` instalado, este chequeo simplemente no corre (no hay nag; `kit-doctor` lo señala como opcional). Un secreto ya en el historial no se arregla con un commit nuevo que lo borre — hay que reescribir el historial o rotar la credencial.
 
 ## Skills vs agents — los pares
 
