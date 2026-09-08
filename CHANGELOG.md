@@ -3,6 +3,27 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.1.0] — 2026-09-07
+
+### Added
+
+- **Skill `sdd-start`** — punto de entrada del flujo Spec-Driven: resuelve el
+  identificador, draftea la spec en `ANDO_SPECS_DIR` delegando a `spec-writer`, la
+  muestra completa, y la marca `status: approved` cuando el usuario la aprueba (no
+  antes, y no si quedan preguntas abiertas). Cierra informando los pasos siguientes
+  (branch, `/rdd-review`, `/spec-delta-apply`, `/sdd-archive`) sin ejecutarlos.
+- **`ANDO_SPECS_DIR` documentado como carpeta central** — carpeta plana y global de
+  specs (`<TICKET-ID>.md` con frontmatter `status: draft|approved|done`), fuera de los
+  repos. El README de esa carpeta describe la convención y el ciclo.
+
+### Changed
+
+- **README** — el flujo SDD/RDD ahora se muestra como pipeline de punta a punta
+  arrancando en `/sdd-start`.
+- **`CLAUDE.md.template`** — `/sdd-start` agregado al índice de skills.
+- **`ando-delegation-reminder.sh`** — la rama de "spec / diseño previo" ahora apunta a
+  `/sdd-start` y matchea también `sdd` / `spec-driven`.
+
 ## [2.0.0] — 2026-09-07
 
 Absorción de mejoras genéricas del kit corporativo del que este deriva (v2.x),

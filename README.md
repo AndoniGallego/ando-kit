@@ -33,6 +33,7 @@ Después de instalar: copiá y completá `CLAUDE.md.template` en `~/.claude/CLAU
 | `pr-review` | Revisión técnica de PRs/MRs, solo lectura |
 | `work-unit-commits` | Planificar commits atómicos y revisables antes de implementar |
 | `handoff` | Arma en un paso el contexto para retomar trabajo ajeno (ticket + PR/branch + historial git + spec) |
+| `sdd-start` | Punto de entrada del flujo SDD: draftea la spec en `ANDO_SPECS_DIR` con `spec-writer`, te la muestra, la marca `approved` |
 | `sdd-archive` | Cierre formal de un ticket SDD: spec → done, contexto a Engram, verifica PR |
 | `spec-delta-apply` | Aplica un delta de specs (ADDED/MODIFIED/REMOVED) al working tree antes del PR |
 | `deploy-check` | Interfaz fina sobre el agente `deploy-checker` para el checklist pre-push/pre-PR |
@@ -108,7 +109,20 @@ El hook `ando-kit-sync.sh` copia automáticamente, en ambas direcciones, lo que 
 
 ## SDD / RDD (opcional)
 
-Las skills `rdd-review`, `sdd-archive`, `spec-delta-apply` y el agente `spec-writer`/`spec-updater` implementan un flujo Spec/Receipt-Driven Development ligero y agnóstico de tracker. El gate `ando-sdd-gate.sh` es **opt-in**: solo actúa si exportás `ANDO_SPECS_DIR` (el directorio donde guardás tus specs `<TICKET-ID>.md` con frontmatter `status:`). Sin esa variable, el flujo SDD sigue disponible como skills pero el hook no dice nada.
+Flujo Spec/Receipt-Driven Development ligero y agnóstico de tracker:
+
+```
+/sdd-start <TICKET>   →  draft de spec en ANDO_SPECS_DIR, revisión, status: approved
+   ↓
+git checkout -b feature/<TICKET>  →  implementar  (test-strategist para el plan de tests)
+   ↓
+/rdd-review           →  revisión proporcional al riesgo del branch
+/spec-delta-apply     →  aplica delta de specs de módulo (si aplica)
+   ↓
+crear PR  →  /sdd-archive <TICKET>   →  status: done
+```
+
+`ANDO_SPECS_DIR` es una carpeta plana y global (`<TICKET-ID>.md` con frontmatter `status: draft|approved|done`). El gate `ando-sdd-gate.sh` es **opt-in**: solo actúa si esa variable está seteada — advierte (no bloquea) si vas a pushear `feature/<TICKET>` sin la spec `approved`. Sin la variable, las skills SDD siguen disponibles pero el hook queda mudo.
 
 ## Origen
 

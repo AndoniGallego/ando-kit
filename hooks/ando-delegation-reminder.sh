@@ -90,8 +90,8 @@ if echo "$MESSAGE" | grep -qE '\b(implement[aá]|hac[eé]lo|cre[aá]|agrega|nuev
 fi
 
 # --- Spec / diseño previo ---
-if echo "$MESSAGE" | grep -qE '\b(spec|dise[ñn]ar|antes.?de.?implementar|c[oó]mo.?lo.?hacemos|qu[eé].?approach)\b'; then
-  HINTS+=("agente spec-writer → generar spec técnica antes de arrancar a codear. Si ya hay una spec previa, spec-updater después de implementar.")
+if echo "$MESSAGE" | grep -qE '\b(spec|dise[ñn]ar|antes.?de.?implementar|c[oó]mo.?lo.?hacemos|qu[eé].?approach|sdd|spec.?driven)\b'; then
+  HINTS+=("skill sdd-start → arranca el ciclo SDD (draftea la spec con spec-writer, la deja approved en ANDO_SPECS_DIR). Si ya hay spec, spec-updater después de implementar.")
 fi
 
 # --- Testing / integración ---

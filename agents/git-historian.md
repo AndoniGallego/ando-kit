@@ -61,7 +61,7 @@ Además del reporte legible de arriba, terminá SIEMPRE tu respuesta con un enve
 
 ```
 <!-- AOP:BEGIN -->
-{"aop_version":"2.0","agent":"git-historian","status":"ok|warning|blocked|error","for_human":"resumen en <=200 caracteres para mostrar al usuario","for_agent":{"file":"src/auth.ts","last_change_summary":"se agregó validación de rate-limit en el login hace 2 semanas","risk_signal":false,"maintainers":["andoni"]},"next_agent":null,"blockers":[]}
+{"aop_version":"2.0","agent":"git-historian","status":"ok|warning|blocked|error","for_human":"resumen en <=200 caracteres para mostrar al usuario","for_agent":{"file":"src/auth.ts","last_change_summary":"se agregó validación de rate-limit en el login hace 2 semanas","risk_signal":false,"maintainers":["alice"]},"next_agent":null,"blockers":[]}
 <!-- AOP:END -->
 ```
 

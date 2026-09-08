@@ -99,6 +99,7 @@ El reviewer es overhead real — omitirlo en tareas mecánicas (1 archivo, renom
 - `/pr-review` — revisión técnica de PRs/MRs, solo lectura
 - `/work-unit-commits` — planificar commits atómicos y revisables antes de implementar
 - `/handoff` — arma en un paso el contexto para retomar trabajo ajeno (ticket + PR/branch + historial git + spec)
+- `/sdd-start` — punto de entrada del flujo SDD: draftea la spec en `ANDO_SPECS_DIR` con `spec-writer`, te la muestra, la marca `approved`
 - `/sdd-archive` — cierre formal de un ticket SDD: spec → done, contexto a Engram, verifica PR
 - `/spec-delta-apply` — aplica un delta de specs (ADDED/MODIFIED/REMOVED) al working tree antes del PR
 - `/deploy-check` — interfaz fina sobre el agente `deploy-checker` para el checklist pre-push/pre-PR
