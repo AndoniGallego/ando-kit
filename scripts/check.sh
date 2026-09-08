@@ -106,6 +106,7 @@ echo "-- Meta --"
 [ -f README.md ] && green "README.md" || red "falta README.md"
 [ -f install.sh ] && green "install.sh" || red "falta install.sh"
 [ -f CHANGELOG.md ] && green "CHANGELOG.md" || yellow "sin CHANGELOG.md"
+[ -f LICENSE ] && green "LICENSE" || yellow "sin LICENSE"
 
 # ---------------------------------------------------------------- Resumen
 echo ""

@@ -7,7 +7,7 @@ description: Armá en un solo comando el contexto completo para agarrar un ticke
 
 Input del usuario: un ID de issue/ticket, un nombre de branch, o ambos.
 
-**Validar el ID del ticket antes de usarlo en cualquier comando** — viene de texto libre del usuario y termina interpolado en `git`/`grep`. Exigir que matchee un formato razonable de tracker (ej. `^[A-Z]+-[0-9]+$` para Jira/Linear, `^#?[0-9]+$` para GitHub/GitLab). Si no matchea, no lo uses en ningún comando shell — pedile al usuario que lo reescriba. Una vez validado, guardalo en `$ticket_id` y usar siempre esa variable.
+**Validar el identificador antes de usarlo en cualquier comando** — viene de texto libre del usuario y termina interpolado en `git`/`grep`. Aceptar: `^[A-Z]+-[0-9]+$` (Jira/Linear), `^#?[0-9]+$` (GitHub/GitLab), o un slug kebab `^[a-z0-9][a-z0-9._-]*$` (specs locales sin tracker). Si no matchea ninguno, no lo uses en ningún comando shell — pedile al usuario que lo reescriba. Una vez validado, guardalo en `$ticket_id` y usar siempre esa variable.
 
 - Si viene un branch con convención `feature/TICKET-ID-descripcion`, `hotfix/...`, etc.: extraer el ticket ID por regex si aplica (un hotfix puede no tener ticket asociado — está bien si no hay).
 - Si viene solo el ticket ID (ya validado): buscar el branch localmente en los repos conocidos con matching literal y límites de palabra:

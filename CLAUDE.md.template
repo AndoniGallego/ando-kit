@@ -40,6 +40,29 @@
 
 **El contexto principal es el orquestador.** Su trabajo es: leer el resultado del agente, decidir el siguiente paso, y coordinar. No procesar.
 
+## Flujo SDD — lo arranca el orquestador, no el usuario
+
+Las skills del flujo Spec/Receipt-Driven **no son comandos que el usuario tipee** — las dispara el orquestador por criterio propio, en el momento justo. `/sdd-start` a mano es sólo un override si el orquestador no arrancó cuando debía.
+
+**Paso 0 — ¿esta tarea necesita spec?** Ante cualquier pedido de implementación, antes de tocar código:
+
+| Spec REQUERIDA (arrancar `sdd-start`) | Ir directo, sin spec |
+|---|---|
+| Comportamiento nuevo observable / toca un contrato (API, firma, evento, esquema) | Fix de una línea con causa obvia |
+| Lógica de negocio nueva o modificada | Rename / formateo / mover archivos |
+| Migración o backfill de datos | Cambio de config o de copy / bump de versión |
+| Seguridad / permisos / dinero / concurrencia | Ajuste cosmético sin lógica |
+| ~3+ archivos, o el approach no es obvio | Instrucciones exactas del usuario, sin ambigüedad |
+| El usuario dijo "esto es delicado / no puede fallar" | El usuario pidió velocidad sobre rigor |
+
+- **Izquierda → spec requerida.** El orquestador corre `sdd-start` (título-primero: propone un slug legible), y no implementa código spec-worthy ni hace `git push` / abre PR de `feature/<id>` hasta que la spec esté `status: approved`.
+- **El usuario puede vetar** → no se crea el archivo de spec, el gate queda mudo para esa tarea.
+- **Derecha o duda hacia trivial → seguir sin spec**, diciéndolo en una línea.
+
+**Cadena, toda orquestada:** `sdd-start` → `feature/<id>` → implementar (`test-strategist` para tests si aplica) → `rdd-review` → `spec-delta-apply <id>` (si hay delta) → PR → `sdd-archive <id>`.
+
+**Backstops (hooks):** `ando-delegation-reminder.sh` recuerda evaluar el Paso 0; `ando-sdd-gate.sh` (vía `ando-prepush-check.sh`) **bloquea `git push`** de `feature/<id>` si existe `$ANDO_SPECS_DIR/<id>.md` sin `approved`.
+
 ## Protocolo AOP v2 — cómo responden los agentes
 
 Para que el orquestador pueda encadenar agentes pasando solo campos estructurados en vez de pegar el output completo de uno como input del siguiente (y así ahorrar contexto), todo agente — los definidos en este kit y los ad-hoc lanzados con el Agent tool — cierra su respuesta con un envelope JSON de una sola línea entre marcadores, además de su reporte legible habitual:

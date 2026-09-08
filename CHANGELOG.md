@@ -3,6 +3,43 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.2.0] — 2026-09-07
+
+Cambio de fondo en el flujo SDD: deja de ser un comando manual y pasa a ser
+**arrancado por el orquestador**, con la spec **requerida** cuando la tarea es no trivial.
+
+### Changed
+
+- **`sdd-start`** — reescrito:
+  - **Título-primero.** Deriva un slug kebab legible (`rate-limit-login`) del título de
+    la tarea, o el orquestador lo propone a partir de lo pedido. Ya no requiere un
+    `TICKET-ID` (sigue aceptándolo para quien tenga tracker). Frontmatter: `id:` +
+    `tracker:` opcional.
+  - **Lo dispara el orquestador**, no el usuario. El "Activation Contract" define los
+    criterios de "no trivial"; si la tarea los cruza, la spec es **requerida** y no se
+    implementa ni se pushea `feature/<id>` sin `status: approved`. La única salida es
+    que el usuario vete el flujo explícitamente (ahí no se crea el archivo de spec).
+- **`ando-sdd-gate.sh`** — reescrito con la nueva filosofía: la existencia de
+  `$ANDO_SPECS_DIR/<id>.md` es la señal de "se consideró necesaria". Si el archivo no
+  existe → mudo (no más nag "te falta la spec"). Si existe y no está `approved` → emite
+  `BLOCK:`. Ahora matchea slugs kebab además de `TICKET-ID`.
+- **`ando-prepush-check.sh`** — clasifica la salida del gate: líneas `BLOCK:` se
+  promueven a `permissionDecision: deny` (el `git push` **no procede** hasta resolver);
+  el resto sigue siendo advertencia. Es el único punto del kit que puede bloquear, y
+  sólo para el caso auto-infligido "spec a medias en tu propio branch".
+- **`sdd-archive`, `handoff`, `spec-delta-apply`** — aceptan `id` como slug kebab
+  además de `TICKET-ID`.
+- **`ando-delegation-reminder.sh`** — la rama de implementación ahora instruye el
+  Paso 0 del flujo SDD (evaluar y arrancar `sdd-start` sin esperar al usuario).
+- **`CLAUDE.md.template`** (y `~/.claude/CLAUDE.md`) — nueva sección "Flujo SDD — lo
+  arranca el orquestador" con la tabla de criterios y la cadena completa encadenada.
+- **`README.md`** — reescrito completo: por qué es útil el kit, el modelo mental
+  skill/agent/hook, y cada skill/agent/hook explicado (qué hace y por qué).
+
+### Added
+
+- **`LICENSE`** (MIT) — el repo es público.
+
 ## [2.1.1] — 2026-09-07
 
 ### Added

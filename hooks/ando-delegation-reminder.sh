@@ -84,14 +84,9 @@ if echo "$MESSAGE" | grep -qE '\b(investig|debug|por.?qu[eé].?falla|por.?qu[eé
   HINTS+=("skill investigar-bug → guía el flujo sistemático. No empezar a explorar código sin este skill.")
 fi
 
-# --- Implementación nueva (feature/fix) → spec primero ---
-if echo "$MESSAGE" | grep -qE '\b(implement[aá]|hac[eé]lo|cre[aá]|agrega|nueva.?feature|nuevo.?m[oó]dulo|escrib[ií].?el.?c[oó]digo)\b'; then
-  HINTS+=("agente spec-writer PRIMERO si la feature no es trivial → spec antes de codear. Luego skill work-unit-commits para planificar los commits.")
-fi
-
-# --- Spec / diseño previo ---
-if echo "$MESSAGE" | grep -qE '\b(spec|dise[ñn]ar|antes.?de.?implementar|c[oó]mo.?lo.?hacemos|qu[eé].?approach|sdd|spec.?driven)\b'; then
-  HINTS+=("skill sdd-start → arranca el ciclo SDD (draftea la spec con spec-writer, la deja approved en ANDO_SPECS_DIR). Si ya hay spec, spec-updater después de implementar.")
+# --- Implementación nueva (feature/fix) → evaluar el Paso 0 del flujo SDD ---
+if echo "$MESSAGE" | grep -qE '\b(implement[aá]|hac[eé]lo|cre[aá]|agrega|nueva.?feature|nuevo.?m[oó]dulo|escrib[ií].?el.?c[oó]digo|dise[ñn]ar|antes.?de.?implementar|qu[eé].?approach|sdd|spec)\b'; then
+  HINTS+=("Flujo SDD Paso 0: ANTES de tocar código, evaluá si la tarea es no trivial (comportamiento nuevo / contrato / lógica de negocio / migración / seguridad / 3+ archivos). Si lo es → arrancá vos el skill sdd-start (no esperes que el usuario tipee /sdd-start); la spec es requerida y no se implementa/pushea sin status: approved. Si es trivial → seguí directo y decilo en una línea.")
 fi
 
 # --- Testing / integración ---

@@ -102,6 +102,19 @@ else
   fail "no hay $SETTINGS"
 fi
 
+# --- CLAUDE.md ---
+section "CLAUDE.md"
+GLOBAL_MD="$CLAUDE/CLAUDE.md"
+if [ -f "$GLOBAL_MD" ]; then
+  if grep -q 'ANDO_KIT_DIR\|ando-kit\|Flujo SDD' "$GLOBAL_MD"; then
+    ok "~/.claude/CLAUDE.md presente y menciona el kit"
+  else
+    warn "~/.claude/CLAUDE.md existe pero no parece incluir las reglas del kit — copiá desde CLAUDE.md.template"
+  fi
+else
+  fail "no hay ~/.claude/CLAUDE.md — sin él las reglas de orquestación/SDD/AOP no están activas. Copiá: cp \"\$ANDO_KIT_DIR/CLAUDE.md.template\" ~/.claude/CLAUDE.md"
+fi
+
 # --- OPCIONALES ---
 section "OPCIONALES"
 if [ -n "${ANDO_SPECS_DIR:-}" ]; then

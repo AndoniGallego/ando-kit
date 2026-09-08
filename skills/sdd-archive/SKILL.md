@@ -3,15 +3,15 @@ name: sdd-archive
 description: Cierre formal de un ticket que siguió un flujo SDD (Spec-Driven Development) — marca la spec como done, guarda en Engram lo que se construyó y verifica que el PR/MR está creado. Invocar al final del ciclo, después de crear el PR.
 ---
 
-## Paso 1 — Determinar el ticket
+## Paso 1 — Determinar el id
 
-El orquestador pasa el ID. Si no se pasó, leerlo del branch actual:
+El orquestador pasa el `id` (slug kebab como `rate-limit-login`, o `TICKET-ID` si hay tracker). Si no se pasó, derivarlo del branch actual — lo que sigue a `feature/`:
 
 ```bash
-git rev-parse --abbrev-ref HEAD | grep -oE '[A-Z]+-[0-9]+' | head -1
+git rev-parse --abbrev-ref HEAD | sed -n 's#^feature/##p'
 ```
 
-Si el branch no codifica un ticket (ej. `feature/kit-foo`, `hotfix/1.2.3`), seguir sin ticket — los pasos de spec se omiten y solo se hace el receipt en Engram.
+Si el branch no es `feature/<id>` (ej. `hotfix/1.2.3`), o es `feature/kit-*`, seguir sin id — los pasos de spec se omiten y solo se hace el receipt en Engram.
 
 ## Paso 2 — Cerrar la spec
 

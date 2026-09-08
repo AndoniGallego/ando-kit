@@ -1,19 +1,29 @@
 #!/bin/bash
-# ando-sdd-gate.sh — helper de gate SDD (Spec-Driven Development). NO es un hook por
-# sí solo: lo invoca ando-prepush-check.sh y su salida se agrega como ADVERTENCIA
-# (nunca bloquea — filosofía del kit: avisar, no frenar).
+# ando-sdd-gate.sh — helper de gate SDD. NO es un hook por sí solo: lo invoca
+# ando-prepush-check.sh y clasifica su salida así:
+#   - líneas que empiezan con "BLOCK: " → ando-prepush-check las promueve a un
+#     `decision: block` (el push NO procede hasta resolver).
+#   - cualquier otra línea → advertencia (el push procede).
 #
 # Uso:   ando-sdd-gate.sh <branch>
-# stdout: mensajes de advertencia (uno por línea) si falta la spec o no está aprobada;
-#         vacío si pasa o si el gate no aplica. Siempre exit 0.
+# stdout: 0+ líneas (ver arriba); vacío si el gate no aplica. Siempre exit 0.
 #
-# OPT-IN: si ANDO_SPECS_DIR no está seteado, el chequeo de spec externa se omite en
-# silencio — solo corre el chequeo de specs/ dentro del repo, si ese dir existe.
+# FILOSOFÍA (el usuario cambió de opinión sobre esto — 2026-09-07):
+# la spec es REQUERIDA cuando el orquestador la consideró necesaria. La señal
+# persistida de "se consideró necesaria" es la EXISTENCIA del archivo
+# $ANDO_SPECS_DIR/<id>.md. Por eso:
+#   - archivo NO existe  → el orquestador no arrancó SDD para esto (tarea trivial,
+#                          o el usuario lo vetó) → gate MUDO. No se nag "te falta la spec".
+#   - archivo existe y status=approved → OK, mudo.
+#   - archivo existe y status != approved → BLOCK: hay una spec a medias para esta rama.
 #
-# Exenciones (nunca se les exige spec):
-#   - hotfix/*              → urgencia de prod
-#   - feature/kit-*         → cambios al propio kit, sin ticket asociado
-#   - branches que no matchean feature/<TICKET-ID>  → no aplica SDD
+# OPT-IN: sin ANDO_SPECS_DIR seteado, el chequeo de spec se omite (solo corre el
+# chequeo de specs/ dentro del repo, y ese es siempre advertencia, nunca BLOCK).
+#
+# Exenciones (nunca se les pide spec):
+#   - hotfix/*        → urgencia de prod
+#   - feature/kit-*   → cambios al propio kit
+#   - ramas que no matchean feature/<algo>
 
 set -uo pipefail
 
@@ -24,27 +34,32 @@ case "$BRANCH" in
   hotfix/*|feature/kit-*) exit 0 ;;
 esac
 
-# TICKET-ID = mayúsculas-guion-números (Jira/Linear style). Si el branch no lo trae, no aplica.
-if ! echo "$BRANCH" | grep -qE '^feature/[A-Z]+-[0-9]+'; then
-  exit 0
+# id = lo que sigue a "feature/". Acepta slug kebab (rate-limit-login) o TICKET-ID (SITE-1234).
+case "$BRANCH" in
+  feature/*) ID="${BRANCH#feature/}" ;;
+  *) ID="" ;;
+esac
+
+# --- 1) Spec en ANDO_SPECS_DIR (la requerida) ---
+if [ -n "$ID" ] && [ -n "${ANDO_SPECS_DIR:-}" ]; then
+  # Sanitizar: solo un segmento de path, caracteres seguros.
+  case "$ID" in
+    */*|..*|"") : ;;  # id raro → no arriesgar, saltar
+    *)
+      if echo "$ID" | grep -qE '^[A-Za-z0-9._-]+$'; then
+        SPEC_FILE="$ANDO_SPECS_DIR/$ID.md"
+        if [ -f "$SPEC_FILE" ]; then
+          STATUS=$(awk '/^---[[:space:]]*$/{n++; next} n==1 && /^status:/{sub(/^status:[ \t]*/,""); sub(/[ \t]+$/,""); print; exit}' "$SPEC_FILE")
+          if [ "$STATUS" != "approved" ]; then
+            echo "BLOCK: la spec $SPEC_FILE está en '${STATUS:-sin frontmatter}' y es requerida antes de pushear $BRANCH. Aprobala (sdd-start la retoma desde el paso de revisión), o archivala/borrala si decidiste no seguir SDD para esta tarea."
+          fi
+        fi
+      fi
+      ;;
+  esac
 fi
 
-TICKET=$(echo "$BRANCH" | grep -oE '[A-Z]+-[0-9]+' | head -1)
-
-# --- 1) Spec externa (opt-in via ANDO_SPECS_DIR) ---
-if [ -n "${ANDO_SPECS_DIR:-}" ]; then
-  SPEC_FILE="$ANDO_SPECS_DIR/$TICKET.md"
-  if [ ! -f "$SPEC_FILE" ]; then
-    echo "SDD: falta la spec $SPEC_FILE — generala con el agente spec-writer y aprobala antes del push."
-  else
-    STATUS=$(awk '/^---[[:space:]]*$/{n++; next} n==1 && /^status:/{sub(/^status:[ \t]*/,""); sub(/[ \t]+$/,""); print; exit}' "$SPEC_FILE")
-    if [ "$STATUS" != "approved" ]; then
-      echo "SDD: la spec $SPEC_FILE tiene status '${STATUS:-sin frontmatter}' — se espera 'status: approved'."
-    fi
-  fi
-fi
-
-# --- 2) specs/ dentro del repo ---
+# --- 2) specs/ dentro del repo (siempre advertencia, nunca BLOCK) ---
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 if [ -n "$REPO_ROOT" ] && [ -d "$REPO_ROOT/specs" ]; then
   MERGE_BASE=$(git merge-base HEAD "$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)" 2>/dev/null \

@@ -1,14 +1,18 @@
 #!/bin/bash
 # ando-prepush-check.sh — Hook PreToolUse (matcher: Bash)
 #
-# Red de seguridad no bloqueante antes de un `git push`: Conventional Commits
-# en el último commit y TODO/FIXME en los archivos cambiados. Solo advierte
-# (systemMessage) — nunca bloquea el push. Si querés un gate más estricto
-# para un repo puntual, agregá tus propias reglas en una copia local del
-# hook para ese proyecto.
+# Chequeos antes de un `git push`. Dos niveles:
 #
-# El hook nunca debe romper el flujo principal: cualquier fallo termina en
-# exit 0 sin imprimir nada.
+#   • ADVERTENCIAS (el push procede): Conventional Commits en el último commit,
+#     TODO/FIXME en los archivos cambiados, y las advertencias no-duras del gate SDD.
+#
+#   • BLOQUEO (el push NO procede): sólo el gate SDD, y sólo en un caso muy acotado —
+#     estás en `feature/<id>` y existe una spec `$ANDO_SPECS_DIR/<id>.md` que NO está
+#     `approved`. Es un estado auto-infligido y de resolución inmediata (aprobá tu
+#     propia spec, o archivala si decidiste no seguir SDD). Cualquier otra cosa es
+#     advertencia, nunca bloqueo.
+#
+# El hook nunca debe romper el flujo por un error propio: cualquier fallo → exit 0.
 
 set -uo pipefail
 
@@ -18,8 +22,6 @@ INPUT=$(cat 2>/dev/null || true)
 [ -z "$INPUT" ] && exit 0
 
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
-
-# Solo actuar en git push
 echo "$COMMAND" | grep -qE '^git push' || exit 0
 
 REPO_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -27,15 +29,21 @@ REPO_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
 cd "$REPO_DIR" || exit 0
 
 WARNINGS=()
+ERRORS=()
 
-# 0. Gate SDD (opt-in) — delega en ando-sdd-gate.sh; su salida son advertencias, nunca bloquea
+# 0. Gate SDD — clasifica su salida: líneas "BLOCK: ..." → ERRORS (bloquean),
+#    resto → WARNINGS (advierten).
 BRANCH=$(git branch --show-current 2>/dev/null)
 if [ -n "$BRANCH" ]; then
   SDD_GATE="$(dirname "${BASH_SOURCE[0]}")/ando-sdd-gate.sh"
   [ -x "$SDD_GATE" ] || SDD_GATE="$HOME/.local/bin/ando-sdd-gate.sh"
   if [ -x "$SDD_GATE" ]; then
     while IFS= read -r line; do
-      [ -n "$line" ] && WARNINGS+=("$line")
+      [ -z "$line" ] && continue
+      case "$line" in
+        BLOCK:\ *) ERRORS+=("${line#BLOCK: }") ;;
+        *)         WARNINGS+=("$line") ;;
+      esac
     done < <("$SDD_GATE" "$BRANCH" 2>/dev/null)
   fi
 fi
@@ -53,7 +61,6 @@ if [ -n "$DEFAULT_BRANCH" ]; then
 else
   CHANGED_FILES=$(git diff --name-only HEAD~1 2>/dev/null)
 fi
-
 if [ -n "$CHANGED_FILES" ]; then
   TODO_HITS=$(echo "$CHANGED_FILES" | xargs -r grep -l "TODO\|FIXME" 2>/dev/null)
   if [ -n "$TODO_HITS" ]; then
@@ -62,16 +69,22 @@ if [ -n "$CHANGED_FILES" ]; then
   fi
 fi
 
-if [ ${#WARNINGS[@]} -eq 0 ]; then
+# --- Salida ---
+# \n literal (dos caracteres) para que el JSON sea válido al interpolar.
+if [ ${#ERRORS[@]} -gt 0 ]; then
+  MSG="🚫 Push bloqueado:"
+  for e in "${ERRORS[@]}"; do MSG="${MSG}\\n  ✗ ${e}"; done
+  for w in "${WARNINGS[@]}"; do MSG="${MSG}\\n  • ${w}"; done
+  ESC=$(printf '%s' "$MSG" | sed 's/"/\\"/g')
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$ESC"
   exit 0
 fi
 
-# \n literal (dos caracteres) para que sea un escape JSON válido — NO un
-# salto de línea real, que rompería el JSON al interpolarlo.
-MSG="⚠ Advertencias pre-push (el push procede igual):"
-for w in "${WARNINGS[@]}"; do
-  MSG="${MSG}\\n  • ${w}"
-done
+if [ ${#WARNINGS[@]} -gt 0 ]; then
+  MSG="⚠ Advertencias pre-push (el push procede igual):"
+  for w in "${WARNINGS[@]}"; do MSG="${MSG}\\n  • ${w}"; done
+  ESC=$(printf '%s' "$MSG" | sed 's/"/\\"/g')
+  printf '{"systemMessage": "%s"}\n' "$ESC"
+fi
 
-printf '{"systemMessage": "%s"}\n' "$MSG"
 exit 0

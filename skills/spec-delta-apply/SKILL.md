@@ -1,14 +1,14 @@
 ---
 name: spec-delta-apply
-description: Aplica el delta de specs de un módulo al working tree antes de crear el PR. Lee <TICKET-ID>.delta.md, modifica los requirements.md del módulo (ADDED/MODIFIED/REMOVED), y marca el delta como archived. Los archivos quedan en el working tree para que el developer los revise y commitee junto con el código.
+description: Aplica el delta de specs de un módulo al working tree antes de crear el PR. Lee <id>.delta.md, modifica los requirements.md del módulo (ADDED/MODIFIED/REMOVED), y marca el delta como archived. Los archivos quedan en el working tree para que el developer los revise y commitee junto con el código.
 trigger: /spec-delta-apply
-args: TICKET-ID
+args: <id>
 ---
 
 ## Invocación
 
 ```
-/spec-delta-apply TICKET-ID
+/spec-delta-apply <id>
 ```
 
 Correr después de terminar la implementación y el review por agentes, antes de crear el PR/MR.
@@ -17,11 +17,11 @@ Correr después de terminar la implementación y el review por agentes, antes de
 
 ```bash
 SPECS_DIR="${ANDO_SPECS_DIR:?ANDO_SPECS_DIR no configurado}"
-DELTA="$SPECS_DIR/<TICKET-ID>.delta.md"
+DELTA="$SPECS_DIR/<id>.delta.md"
 [ -f "$DELTA" ] || { echo "ERROR: delta no encontrado en $DELTA"; exit 1; }
 ```
 
-Reemplazar `<TICKET-ID>` con el argumento recibido. Leer el archivo delta completo con `Read`.
+Reemplazar `<id>` con el argumento recibido. Leer el archivo delta completo con `Read`.
 
 Si `status: archived`: avisar que ya fue aplicado y salir sin cambios.
 
@@ -78,7 +78,7 @@ Agregar una línea `archived_at: YYYY-MM-DD` bajo `status`.
 ## Paso 7 — Imprimir resumen
 
 ```
-✅ spec-delta-apply <TICKET-ID> aplicado
+✅ spec-delta-apply <id> aplicado
 
 Archivos modificados en <repo_path>/:
   specs/modules/use-cases/requirements.md  (+UC-XXX NombreCasoDeUso)
@@ -94,5 +94,5 @@ Cuando conforme, stagear junto con el código:
 ## Lo que este skill NO hace
 
 - No ejecuta `git add` ni `git commit` — el developer revisa y stagea manualmente.
-- No toca `$ANDO_SPECS_DIR/<TICKET-ID>.md` — ese archivo lo cierra `/sdd-archive`.
+- No toca `$ANDO_SPECS_DIR/<id>.md` — ese archivo lo cierra `/sdd-archive`.
 - No crea el PR.
