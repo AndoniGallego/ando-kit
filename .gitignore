@@ -1,0 +1,5 @@
+# Nada que buildear — este repo es solo skills/agents/hooks de texto.
+.DS_Store
+*.swp
+*.bak
+*~

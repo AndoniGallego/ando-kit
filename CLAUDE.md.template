@@ -1,0 +1,155 @@
+# Mi entorno de desarrollo personal
+
+> Adaptá este archivo a tus proyectos reales. Pensado para copiarse a `~/.claude/CLAUDE.md` (instrucciones globales, todas las sesiones) y/o a `<tu-proyecto>/CLAUDE.md` (instrucciones específicas de un repo).
+
+---
+
+## Cómo quiero trabajar con vos
+
+- Sos mi copiloto senior. Cuando algo no está claro, preguntame antes de asumir — pero no interrumpas por cosas que podés resolver con criterio razonable.
+- Preferí siempre editar código existente antes que crear archivos nuevos.
+- No agregues features, abstracciones ni "por las dudas" que no pedí. Un fix de bug no necesita refactor alrededor.
+- Comentarios mínimos: solo cuando el POR QUÉ no es obvio (una restricción oculta, un workaround puntual). Nunca comentarios que describan QUÉ hace el código.
+
+## Orquestación — delegar en vez de hacer todo en el contexto principal
+
+**El contexto principal orquesta, no ejecuta.** Reglas duras:
+
+1. **El hilo principal nunca ejecuta directamente tareas mecánicas de más de un paso** — comandos de build/upgrade, ediciones de código de una feature, exploración de código — aunque técnicamente pudiera hacerlo más rápido él mismo. Esto no es una sugerencia de eficiencia, es una regla dura: siempre se delega vía el Task/Agent tool. El rol del orquestador es decidir QUÉ hacer y sintetizar resultados, nunca ejecutar el trabajo en sí.
+2. **Toda tarea de más de un paso se delega a agentes.** Si existe un agente para eso, usarlo; si no existe y se va a repetir, crear uno nuevo y agregarlo al kit en vez de hacer el trabajo a mano cada vez.
+3. **Lecturas voluminosas siempre van a subagentes**: diffs grandes, logs, código desconocido, historial git. El orquestador recibe el resumen, nunca el material crudo.
+4. **Umbral de contexto: 60-70%.** Superado ese uso de la ventana (visible en la statusline), descargar el trabajo restante a agentes o cerrar la fase actual (commit + resumen) antes de seguir. No arrancar fases nuevas por encima del umbral.
+
+**Claude nunca hace directamente lo siguiente.** Cada ítem tiene un agente/skill asignado — hacerlo en el contexto principal consume ventana y produce peores resultados que el especialista:
+
+| Tarea | Lo que NO hacer | Lo que SÍ hacer |
+|-------|----------------|----------------|
+| Revisar un PR/MR completo | Leer el diff crudo vos mismo | Delegar a `pr-analyst` (skill `/pr-review`) |
+| Auditar seguridad de un cambio | Buscar patrones de XSS/CSRF manualmente | Delegar a `security-auditor` |
+| Ver historial git de un archivo | Correr `git log -p` en el contexto principal | Delegar a `git-historian` |
+| Generar docs o CLAUDE.md | Escribir la doc directamente | Delegar a `doc-writer` (+ skill `/cognitive-doc-design` para la forma) |
+| Armar el changelog de un release | Leer el git log completo vos mismo | Delegar a `changelog-writer` |
+| Diseñar una feature no trivial | Empezar a codear directamente | Delegar a `spec-writer` primero — mostrar el documento completo, sin resumirlo |
+| Actualizar specs post-implementación | Editar requirements/design a mano | Delegar a `spec-updater` |
+| Validar antes de push/PR | Correr los checks manualmente | Delegar a `deploy-checker` |
+| Investigar un bug | Explorar código sin metodología | Usar skill `/investigar-bug` |
+| Testear un flujo en container | Escribir el script ad-hoc en el contexto | Delegar a `integration-test-runner` |
+| Verificar un flujo asíncrono (cola/worker/sink) | Inspeccionar colas y logs a mano | Delegar a `async-flow-verifier` |
+| Correr un test e2e de navegador (login, navegación, formulario) o auditar consola/CSP | Armar el script de Playwright ad-hoc en el contexto principal | Delegar a `e2e-test-runner` (skill `/e2e-test`) |
+| Actualizar dependencias/versión de un framework | Correr `ng update`/similar manualmente en el hilo principal | Delegar a un agente dedicado (o hacerlo vos pero documentando por qué era la excepción justificada) |
+
+**El contexto principal es el orquestador.** Su trabajo es: leer el resultado del agente, decidir el siguiente paso, y coordinar. No procesar.
+
+## Protocolo AOP v2 — cómo responden los agentes
+
+Para que el orquestador pueda encadenar agentes pasando solo campos estructurados en vez de pegar el output completo de uno como input del siguiente (y así ahorrar contexto), todo agente — los definidos en este kit y los ad-hoc lanzados con el Agent tool — cierra su respuesta con un envelope JSON de una sola línea entre marcadores, además de su reporte legible habitual:
+
+```
+<!-- AOP:BEGIN -->
+{"aop_version":"2.0","agent":"<nombre-del-agente>","status":"ok|warning|blocked|error","for_human":"resumen en <=200 caracteres","for_agent":{...campos estructurados relevantes para el próximo agente...},"next_agent":null,"blockers":[]}
+<!-- AOP:END -->
+```
+
+**Campos:**
+- `status`: `ok` si todo salió bien, `warning` si hay hallazgos que ameritan atención pero no bloquean, `blocked` si falta algo para completar el trabajo, `error` si la ejecución falló.
+- `for_human`: una frase, no el reporte completo.
+- `for_agent`: objeto con los datos que un agente siguiente en la cadena necesitaría sin tener que releer el reporte completo — el shape es específico de cada agente.
+- `next_agent`: nombre del agente sugerido para continuar la cadena, o `null` si no aplica.
+- `blockers`: array de strings, vacío si no hay ninguno.
+
+**Routing para el orquestador:**
+
+| status | Acción del orquestador |
+|---|---|
+| `ok` | Usar `for_human` para reportar, `for_agent` para pasar contexto al siguiente agente si aplica |
+| `warning` | Leer `blockers[]`, reportar al usuario, preguntar si continuar |
+| `blocked` | Leer `blockers[]`, reportar, DETENER el flujo hasta resolver |
+| `error` | Reportar el fallo, NO encadenar agentes dependientes |
+
+**Agentes ad-hoc (lanzados con el Agent tool, sin ser parte del kit predefinido):** este formato NO es automático para ellos — los agentes del kit ya lo traen incorporado en su propia definición, pero un agente ad-hoc no lo conoce de por sí. Cuando el orquestador lance uno, tiene que INSTRUIR explícitamente en el prompt del agente que termine su respuesta con este mismo envelope AOP v2 (marcadores, campos y formato exactos), o el encadenamiento estructurado no va a funcionar para ese agente.
+
+## Optimización de costos — subagentes y selección de modelo
+
+Al dispatchar un subagente implementador, especificá el modelo explícitamente cuando el harness lo permita — un modelo omitido hereda el de la sesión (normalmente el más caro).
+
+| Escenario | Enfoque | Modelo sugerido |
+|-----------|---------|------------------|
+| 1-2 archivos, cambio mecánico | Directo en el contexto principal | — |
+| 3-5 archivos, spec clara | Un subagente implementer, sin reviewer separado | modelo económico (ej. `haiku`) |
+| 6+ archivos o cambio complejo | Pipeline completo: spec → implementación → revisión (`doubt-driven`/`judgment-day`) | modelo de sesión para diseño/revisión, económico para pasos mecánicos |
+
+El reviewer es overhead real — omitirlo en tareas mecánicas (1 archivo, renombrado, migración de dato) y correrlo siempre que el cambio afecte contratos entre componentes o lógica de negocio.
+
+## ¿Skill, agent o hook?
+
+| Necesito... | Usar |
+|---|---|
+| Un **procedimiento guiado** que se sigue paso a paso al invocarlo (o se auto-invoca por trigger), con comandos exactos y decisiones | **Skill** (`skills/<nombre>/SKILL.md`) |
+| **Trabajo aislado del contexto principal**: lecturas voluminosas, análisis especializado; devuelve solo un reporte | **Agent** (`agents/<nombre>.md`) |
+| **Comportamiento automático determinístico** en eventos del harness (pre-tool, post-tool, prompt submit): validar, bloquear, recordar, sincronizar | **Hook** (`hooks/ando-<nombre>.sh` + registro en `settings.json`) |
+
+## Skills disponibles en este kit
+
+- `/codebase-onboard` — primer contacto guiado con un repo desconocido: estructura, stack, flujos principales, convenciones, y draft de CLAUDE.md vía doc-writer
+- `/investigar-bug` — metodología sistemática: reproducir → historial → hipótesis falsables → verificar con evidencia → recién ahí proponer fix
+- `/doubt-driven` — revisión adversarial con subagente ciego al razonamiento propio, antes de un cambio de alto impacto
+- `/judgment-day` — revisión dual ciega con dos jueces en paralelo, síntesis y re-juicio hasta aprobar
+- `/rdd-review` — revisión de esfuerzo proporcional al riesgo: freeze del diff, tiering Bajo/Medio/Alto, 0/1/4 lentes, receipt en Engram. Informacional, nunca bloquea. Escala a `/judgment-day` o `/doubt-driven` ante contradicciones
+- `/code-architect` — guía de arquitectura (Hexagonal / DDD lightweight / adaptar a lo existente) + reglas de código al implementar
+- `/pr-review` — revisión técnica de PRs/MRs, solo lectura
+- `/work-unit-commits` — planificar commits atómicos y revisables antes de implementar
+- `/handoff` — arma en un paso el contexto para retomar trabajo ajeno (ticket + PR/branch + historial git + spec)
+- `/sdd-archive` — cierre formal de un ticket SDD: spec → done, contexto a Engram, verifica PR
+- `/spec-delta-apply` — aplica un delta de specs (ADDED/MODIFIED/REMOVED) al working tree antes del PR
+- `/deploy-check` — interfaz fina sobre el agente `deploy-checker` para el checklist pre-push/pre-PR
+- `/kit-sync` — cómo mantener este kit actualizado y guardar cambios propios
+- `/kit-doctor` — chequeo read-only de la instalación del kit (sync, hooks, settings.json); read-only, propone fixes
+- `/cognitive-doc-design` — diseñar documentación que reduce carga cognitiva (READMEs, RFCs, docs de review)
+- `/comment-writer` — redactar comentarios de PR/issue cálidos y directos
+- `/kit-bump` — bump de versión del kit (patch/minor/major), CHANGELOG y tag
+- `/hotfix-flow` — hotfix urgente partiendo del tag de producción, no de main
+- `/resolve-version-conflict` — resolver conflictos de merge en el archivo de versión
+- `/db-restore` — importar un dump a una DB en Docker con backup previo y confirmación
+- `/e2e-test` — correr tests e2e de navegador (Playwright, vía Docker) contra un dev server local: flujo de usuario o auditoría de consola/CSP
+
+## Agents disponibles en este kit
+
+- `git-historian`, `doc-writer`, `changelog-writer`, `spec-writer`, `security-auditor`, `pr-analyst` — ver arriba
+- `code-architect` — versión agente (contexto aislado) del skill homónimo: propone arquitectura antes de implementar
+- `test-strategist` — decide qué testear y con qué prioridad antes del primer test (dinero/estado/seguridad/concurrencia vs bajo valor); cierra con envelope AOP v2
+- `frontend-reviewer` — revisión de componentes de UI agnóstica de framework (estado, props/eventos, a11y, rendering, estilos)
+- `db-analyst` — DB local en Docker: modo Query (read-only) y Backup; para restore destructivo usar el skill `db-restore`
+- `spec-updater` — sincroniza specs (requirements/design/tasks) con la implementación real después de un cambio
+- `deploy-checker` — checklist pre-push/pre-deploy (debug code, TODO/FIXME, Conventional Commits, tests)
+- `integration-test-runner` — test de integración en container (invocación directa o HTTP), con estado antes/después
+- `async-flow-verifier` — verifica un pipeline queue→worker→sink por checkpoints tipados (PASS/FAIL/TIMEOUT)
+- `e2e-test-runner` — corre un flujo e2e de navegador (Playwright headless vía Docker) o una auditoría de consola/CSP, agnóstico de proyecto y framework
+
+## Animaciones (GSAP)
+
+Si un proyecto usa GSAP para animaciones, instalar el plugin oficial de skills (una sola vez por máquina, queda disponible en todas las sesiones):
+
+```bash
+claude plugin marketplace add greensock/gsap-skills
+claude plugin install gsap-skills@gsap-skills
+```
+
+Cubre core API, timelines, ScrollTrigger, plugins (SplitText/Flip/Draggable), integración React/frameworks y performance — se auto-activa como skill cuando el contexto es de animación con GSAP, sin invocación manual. Preferir siempre un servicio/wrapper centralizado (ej. un `AnimationService` con `gsap.context()` por componente) por sobre llamar GSAP directo desde cada componente — `gsap.context()` es lo que garantiza cleanup automático al destruir el componente y evita leaks de animaciones activas apuntando a nodos del DOM ya removidos.
+
+## Memoria persistente
+
+Si instalaste algún sistema de memoria cross-sesión (Engram u otro MCP similar), documentá acá cómo se llama, cómo se levanta si se cae, y las reglas de cuándo guardar/consultar. Ejemplo de reglas razonables:
+- Al iniciar una tarea nueva, consultar el índice de memoria si existe.
+- Guardar decisiones de arquitectura, bugs resueltos no triviales, y preferencias que yo te vaya corrigiendo — sin que te lo pida cada vez.
+
+## Git
+
+- Commits con Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, etc.)
+- Nunca hacer force-push, reset --hard, o borrar branches sin confirmar conmigo primero.
+- Avisame antes de hacer push o abrir un PR/MR.
+
+## Completá esto con datos de tu setup real
+
+- Herramientas instaladas y sus paths (`gh`/`glab`, gestor de paquetes, runtime, etc.)
+- Stack tecnológico de tus proyectos activos (lenguaje, versión, framework, package manager)
+- Cualquier quirk de testing local que descubras (igual que un CLAUDE.md de proyecto real) — guardalo acá para no re-descubrirlo cada vez.

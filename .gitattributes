@@ -1,0 +1,5 @@
+# Los hooks y scripts corren en bash (Linux/Mac/WSL/git-bash). Un \r en el
+# shebang los rompe en Linux — forzar LF siempre, sin importar el SO del que commitea.
+*.sh text eol=lf
+*.md text eol=lf
+VERSION text eol=lf
