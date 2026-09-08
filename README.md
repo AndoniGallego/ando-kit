@@ -1,6 +1,6 @@
 # ando-kit
 
-**v2.1.0**
+**v2.1.1**
 
 Kit de Claude Code — skills, agents y hooks para usar en cualquier proyecto. Contenido original, escrito desde conocimiento general de la industria (metodologías de debugging, arquitectura hexagonal/DDD, OWASP, Spec/Receipt-Driven Development, buenas prácticas de PR review). No contiene nada propietario de ningún empleador — se puede compartir libremente.
 

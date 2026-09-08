@@ -3,6 +3,17 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.1.1] — 2026-09-07
+
+### Added
+
+- **CI** (`.github/workflows/check.yml`) — corre `scripts/check.sh` (con shellcheck)
+  en cada push a `main` y en cada PR.
+
+### Fixed
+
+- El header del `README.md` decía `v2.0.0` en el tag `v2.1.0` — corregido a la versión real.
+
 ## [2.1.0] — 2026-09-07
 
 ### Added
