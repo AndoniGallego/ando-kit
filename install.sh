@@ -6,11 +6,12 @@ set -uo pipefail
 KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILLS_DIR="$HOME/.claude/skills"
 AGENTS_DIR="$HOME/.claude/agents"
+RULES_DIR="$HOME/.claude/rules"
 HOOKS_DIR="$HOME/.local/bin"
 
 echo "== ando-kit installer =="
 echo "Kit encontrado en: $KIT_DIR"
-mkdir -p "$SKILLS_DIR" "$AGENTS_DIR" "$HOOKS_DIR"
+mkdir -p "$SKILLS_DIR" "$AGENTS_DIR" "$RULES_DIR" "$HOOKS_DIR"
 
 echo ""
 echo "-- Skills --"
@@ -33,6 +34,16 @@ for f in "$KIT_DIR"/agents/*.md; do
   count=$((count+1))
 done
 echo "Agents instalados: $count"
+
+echo ""
+echo "-- Rules --"
+count=0
+for f in "$KIT_DIR"/rules/*.md; do
+  cp "$f" "$RULES_DIR/"
+  echo "  ✓ $(basename "$f")"
+  count=$((count+1))
+done
+echo "Rules instaladas: $count"
 
 echo ""
 echo "-- Hooks --"
@@ -125,5 +136,5 @@ echo "    echo \"/ruta/a/tu/repo/.git\" >> ~/.claude/.ando-git-trust-allow"
 
 echo ""
 echo "== Listo =="
-echo "Skills: $SKILLS_DIR | Agents: $AGENTS_DIR | Hooks: $HOOKS_DIR"
+echo "Skills: $SKILLS_DIR | Agents: $AGENTS_DIR | Rules: $RULES_DIR | Hooks: $HOOKS_DIR"
 echo "Revisá README.md y CLAUDE.md.template en $KIT_DIR para terminar de armar tu ~/.claude/CLAUDE.md personal."

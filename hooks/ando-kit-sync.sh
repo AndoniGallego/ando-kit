@@ -6,6 +6,7 @@
 #
 #   ~/.claude/skills/<skill>/**  <->  ando-kit/skills/<skill>/**  (directorio completo)
 #   ~/.claude/agents/*.md        <->  ando-kit/agents/*.md
+#   ~/.claude/rules/*.md         <->  ando-kit/rules/*.md
 #   ~/.local/bin/ando-*.sh       <->  ando-kit/hooks/*.sh
 #
 # Se dispara en cada Write/Edit. Si el archivo no está en ninguna ruta
@@ -98,6 +99,20 @@ fi
 if [[ "$FILE_PATH" == "$ANDO_KIT_DIR/agents/"*.md ]]; then
     REL_PATH="${FILE_PATH#"$ANDO_KIT_DIR"/agents/}"
     sync_copy "$FILE_PATH" "$CLAUDE/agents/$REL_PATH"
+    exit 0
+fi
+
+# ~/.claude/rules/*.md -> ando-kit/rules/
+if [[ "$FILE_PATH" == "$CLAUDE/rules/"*.md ]]; then
+    REL_PATH="${FILE_PATH#"$CLAUDE"/rules/}"
+    sync_copy "$FILE_PATH" "$ANDO_KIT_DIR/rules/$REL_PATH"
+    exit 0
+fi
+
+# ando-kit/rules/*.md -> ~/.claude/rules/
+if [[ "$FILE_PATH" == "$ANDO_KIT_DIR/rules/"*.md ]]; then
+    REL_PATH="${FILE_PATH#"$ANDO_KIT_DIR"/rules/}"
+    sync_copy "$FILE_PATH" "$CLAUDE/rules/$REL_PATH"
     exit 0
 fi
 

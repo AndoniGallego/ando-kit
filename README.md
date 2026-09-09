@@ -51,6 +51,16 @@ Diagnóstico en cualquier momento: `/kit-doctor`.
 
 ---
 
+## Rules con scoping por path
+
+Todo lo que va en `CLAUDE.md` se paga en **todas** las sesiones de **todos** los proyectos, la usen o no. Un archivo en `.claude/rules/<nombre>.md` con frontmatter `paths:` (lista de globs) resuelve eso para contenido genuinamente específico de un dominio: Claude Code lo carga en contexto solo cuando la sesión toca un archivo que matchea esos globs.
+
+Se instala vía `install.sh` (`rules/*.md` → `~/.claude/rules/`) y queda sincronizado en ambas direcciones por `ando-kit-sync.sh`, igual que `skills/` y `agents/`.
+
+Primer caso de uso: `rules/gsap.md`, con `paths: ["**/*.{js,jsx,ts,tsx,vue,svelte}"]` — las convenciones de GSAP (antes una sección fija de `CLAUDE.md`) ahora solo entran en contexto en proyectos frontend, y `CLAUDE.md` se queda con un puntero de una línea.
+
+---
+
 ## Flujo SDD/RDD
 
 El ciclo Spec/Receipt-Driven, **arrancado y encadenado por el orquestador** (vos no pedís cada paso):
