@@ -105,6 +105,11 @@ Al dispatchar un subagente implementador, especificá el modelo explícitamente 
 
 El reviewer es overhead real — omitirlo en tareas mecánicas (1 archivo, renombrado, migración de dato) y correrlo siempre que el cambio afecte contratos entre componentes o lógica de negocio.
 
+**Selección dinámica para agentes de juicio** (`code-architect`, `doc-writer`, `frontend-reviewer`, `spec-writer`, `test-strategist`, `pr-analyst`, `security-auditor`, `spec-updater`): ninguno fija `model` en su frontmatter a propósito — el Agent tool acepta un `model` explícito por invocación que tiene prioridad sobre el frontmatter del agente, así que la decisión la toma el orquestador caso a caso según la complejidad de ESA tarea puntual, no un valor fijo:
+- Juicio simple/acotado (revisar un componente chico, spec de una feature bien delimitada) → `sonnet`.
+- Juicio complejo/ambiguo/alto riesgo (arquitectura de un sistema nuevo, seguridad de un cambio crítico, spec de una migración de datos) → `opus`.
+- Si la sesión corre en fast-mode (Haiku) y la tarea de juicio no es trivial, forzar `model: sonnet` explícito como piso al invocar — nunca dejar que un agente de juicio herede Haiku por default de una sesión rápida.
+
 ## ¿Skill, agent o hook?
 
 | Necesito... | Usar |
