@@ -3,6 +3,42 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.8.0] — 2026-09-09
+
+Mejoras de infraestructura: un nuevo mecanismo para reglas contextuales
+(rules/ con scoping por path, reduciendo overhead en sesiones que no las usan) y
+optimización de costos/rendimiento en agentes (selección dinámica de modelo,
+caches más inteligentes).
+
+### Added
+
+- **`rules/` con scoping por path** — archivos en `~/.claude/rules/<nombre>.md` con
+  frontmatter `paths:` (lista de globs) se cargan solo cuando la sesión toca un
+  archivo que matchea alguno de esos patrones. Resuelve el overhead de CLAUDE.md
+  global que se paga en todas las sesiones incluso de proyectos que no lo usan. Se
+  instala vía `install.sh` → `~/.claude/rules/` y queda sincronizado bidireccional
+  por `ando-kit-sync.sh`, igual que `skills/` y `agents/`. **Primer caso de uso:**
+  `rules/gsap.md` con `paths: ["**/*.{js,jsx,ts,tsx,vue,svelte}"]` — la sección de
+  animaciones se migró ahí desde CLAUDE.md.template, reduciendo overhead de contexto
+  en sesiones de proyectos no-frontend.
+
+### Changed
+
+- **Selección dinámica de modelo en agentes de juicio** — `code-architect`,
+  `doc-writer`, `frontend-reviewer`, `spec-writer`, `test-strategist` ya no fijan
+  `model: sonnet` en el frontmatter a propósito. El orquestador ahora invoca cada uno
+  explícitamente con `model:` según la complejidad de esa tarea puntual (sonnet para
+  juicio simple/acotado, opus para juicio complejo/ambiguo/alto riesgo), permitiendo
+  así tanto degradación en sesiones fast-mode cuando realmente es trivial, como
+  escalado a Opus cuando la apuesta es más alta. Documentado en CLAUDE.md.template.
+- **Costos y caches optimizados** — agentes mecánicos que ejecutan y reportan sin
+  síntesis (`async-flow-verifier`, `deploy-checker`, `integration-test-runner`,
+  `e2e-test-runner`) reciben ahora `model: haiku` explícito en el frontmatter.
+  Agentes que se relanzan en ráfaga dentro de un mismo flujo (`async-flow-verifier`,
+  `db-analyst`, `integration-test-runner`, `e2e-test-runner`, `git-historian`)
+  ahora cachean el contexto por 1 hora (`cacheTtl: 1h`) en lugar de los 5 minutos
+  default, reduciendo latencia y costo de API en sesiones intensivas.
+
 ## [2.7.0] — 2026-09-08
 
 El autoupdate que el aper-kit resolvía con un cron real — acá no hay cron (Windows),
