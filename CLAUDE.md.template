@@ -10,13 +10,24 @@
 - Preferí siempre editar código existente antes que crear archivos nuevos.
 - No agregues features, abstracciones ni "por las dudas" que no pedí. Un fix de bug no necesita refactor alrededor.
 - Comentarios mínimos: solo cuando el POR QUÉ no es obvio (una restricción oculta, un workaround puntual). Nunca comentarios que describan QUÉ hace el código.
+- Si la misma pregunta, hecha dos veces, tiene la misma respuesta correcta por definición, es un problema determinístico — escribí un script o comando, no lo razones a ojo cada vez. Reservá el razonamiento del modelo para lo que de verdad requiere juicio.
+- Tono: nada de em dash decorativo ni relleno tipo "delve", "robust", "leverage", "seamless", "here's the kicker" o equivalentes en español ("y acá está lo interesante"). Directo, sin inflar.
+- Al elegir entre librerías/dependencias candidatas: buscá alternativas en paralelo, rankealas por estrellas/actividad reciente/issues abiertos, y traeme la mejor con las razones — no una lista para que yo elija.
+
+## Triage antes de cada tarea
+
+Antes de tocar código — incluso en tareas triviales — anunciá en una línea el triage:
+
+`Size: trivial|chico|mediano|grande · Tests: sí|no|n/a · Agents: ninguno|<cuáles> · Branch: main|feature/<id>`
+
+No es ceremonia extra: es la misma proporcionalidad que ya aplican `/rdd-review` y la tabla de delegación de abajo, pero hecha explícita ANTES de empezar, no solo al revisar después.
 
 ## Orquestación — delegar en vez de hacer todo en el contexto principal
 
 **El contexto principal orquesta, no ejecuta.** Reglas duras:
 
 1. **El hilo principal nunca ejecuta directamente tareas mecánicas de más de un paso** — comandos de build/upgrade, ediciones de código de una feature, exploración de código — aunque técnicamente pudiera hacerlo más rápido él mismo. Esto no es una sugerencia de eficiencia, es una regla dura: siempre se delega vía el Task/Agent tool. El rol del orquestador es decidir QUÉ hacer y sintetizar resultados, nunca ejecutar el trabajo en sí.
-2. **Toda tarea de más de un paso se delega a agentes.** Si existe un agente para eso, usarlo; si no existe y se va a repetir, crear uno nuevo y agregarlo al kit en vez de hacer el trabajo a mano cada vez.
+2. **Toda tarea de más de un paso se delega a agentes.** Si existe un agente para eso, usarlo; si no existe y se va a repetir, crear uno nuevo y agregarlo al kit en vez de hacer el trabajo a mano cada vez. Esto también aplica a éxitos, no solo a fallos: si un flujo manual salió bien dos veces, esa segunda vez ya es la señal para convertirlo en skill/agent — no hace falta esperar a que algo falle para skillificarlo.
 3. **Lecturas voluminosas siempre van a subagentes**: diffs grandes, logs, código desconocido, historial git. El orquestador recibe el resumen, nunca el material crudo.
 4. **Umbral de contexto: 80%.** Al llegar a ese uso de la ventana la statusline se pone roja y el hook `ando-context-threshold.sh` avisa. Por encima: descargar el trabajo restante a agentes o cerrar la fase actual (commit + resumen) antes de seguir. No arrancar fases nuevas por encima del umbral.
 5. **Commits como unidades de trabajo.** Antes de implementar un cambio multi-archivo, planificar los commits con la skill `work-unit-commits`: cada commit compila, propósito de una línea, el conjunto es una historia legible para el reviewer.
@@ -92,6 +103,17 @@ Para que el orquestador pueda encadenar agentes pasando solo campos estructurado
 | `error` | Reportar el fallo, NO encadenar agentes dependientes |
 
 **Agentes ad-hoc (lanzados con el Agent tool, sin ser parte del kit predefinido):** este formato NO es automático para ellos — los agentes del kit ya lo traen incorporado en su propia definición, pero un agente ad-hoc no lo conoce de por sí. Cuando el orquestador lance uno, tiene que INSTRUIR explícitamente en el prompt del agente que termine su respuesta con este mismo envelope AOP v2 (marcadores, campos y formato exactos), o el encadenamiento estructurado no va a funcionar para ese agente.
+
+## Protocolo de cierre (sesión principal)
+
+Al terminar una tarea, cerrá con uno de estos cuatro estados — mismo espíritu que el AOP v2 de arriba, pero para cuando cierro yo mismo el contexto principal, no un agente:
+
+- `DONE` — hecho y verificado.
+- `DONE_WITH_CONCERNS` — hecho, pero con algo puntual que deberías revisar (nombralo explícito).
+- `BLOCKED` — no se puede seguir sin una decisión tuya.
+- `NEEDS_CONTEXT` — falta info que solo vos tenés.
+
+Antes de reportar `DONE`, autoevaluate el resultado 1-10 contra lo pedido. Si estás autocorrigiéndote y llegás a la 3ra pasada sin pasar de 8, no sigas iterando solo — delegá el rating final a un subagente fresco (ciego a tu razonamiento previo), vía `/doubt-driven` si el cambio es de riesgo.
 
 ## Optimización de costos — subagentes y selección de modelo
 
