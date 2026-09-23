@@ -9,6 +9,7 @@ Statusline más limpia y protocolos del template formalizados.
 
 ### Added
 - Template: bloque de triage previo a cada tarea, protocolo de cierre del contexto principal (DONE/DONE_WITH_CONCERNS/BLOCKED/NEEDS_CONTEXT) con autoevaluación, y reglas explícitas de delegación, ranking de dependencias y skillify por éxito repetido.
+- Template: convención de Engram, un `.engram/config.json` por repo (y en la carpeta raíz multi-repo) para evitar el error `ambiguous project`.
 
 ### Changed
 - Statusline: queda como modelo | directorio | % de contexto | versión. Se quitaron el contador de tokens/ventana y el prefijo "kit" de la versión.
