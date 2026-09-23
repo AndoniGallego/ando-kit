@@ -3,6 +3,16 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.8.1] — 2026-09-23
+
+Statusline más limpia y protocolos del template formalizados.
+
+### Added
+- Template: bloque de triage previo a cada tarea, protocolo de cierre del contexto principal (DONE/DONE_WITH_CONCERNS/BLOCKED/NEEDS_CONTEXT) con autoevaluación, y reglas explícitas de delegación, ranking de dependencias y skillify por éxito repetido.
+
+### Changed
+- Statusline: queda como modelo | directorio | % de contexto | versión. Se quitaron el contador de tokens/ventana y el prefijo "kit" de la versión.
+
 ## [2.8.0] — 2026-09-09
 
 Mejoras de infraestructura: un nuevo mecanismo para reglas contextuales
