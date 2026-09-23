@@ -74,18 +74,6 @@ BOLD='\033[1m'
 GRAY='\033[90m'
 YELLOW='\033[33m'
 
-# Formatear tokens para display (en miles)
-USAGE_DISPLAY=""
-if [ -n "$TOKENS" ] && [ "$TOKENS" != "null" ] && [ "$TOKENS" -gt 0 ] 2>/dev/null; then
-  TOK_K=$(( TOKENS / 1000 ))
-  if [ "$CONTEXT_WINDOW" -ge 1000000 ]; then
-    WIN_DISPLAY="1M"
-  else
-    WIN_DISPLAY="$(( CONTEXT_WINDOW / 1000 ))k"
-  fi
-  USAGE_DISPLAY=" ${GRAY}(${TOK_K}k/${WIN_DISPLAY})${RESET}"
-fi
-
 # Porcentaje: verde <60, amarillo 60-79, rojo ≥80
 if [ "$PCT" = "?" ]; then
   PCT_COLOR='\033[90m'
@@ -119,9 +107,9 @@ if [ -n "$KIT_DIR" ] && [ -d "$KIT_DIR/.git" ]; then
   KIT_TXT=$(cat "$KIT_CACHE" 2>/dev/null)
   case "$KIT_TXT" in
     "")   : ;;
-    *↑*)  KIT_MARK=" | ${YELLOW}kit ${KIT_TXT}${RESET}" ;;
-    *)    KIT_MARK=" | ${GRAY}kit ${KIT_TXT}${RESET}" ;;
+    *↑*)  KIT_MARK=" | ${YELLOW}${KIT_TXT}${RESET}" ;;
+    *)    KIT_MARK=" | ${GRAY}${KIT_TXT}${RESET}" ;;
   esac
 fi
 
-printf "${CYAN}[%s]${RESET} ${MAGENTA}%s${RESET} | Ctx orquestador: ${PCT_COLOR}%s%%${RESET}%b%b%b\n" "$MODEL" "$DIR" "$PCT" "$USAGE_DISPLAY" "$MARK" "$KIT_MARK"
+printf "${CYAN}[%s]${RESET} ${MAGENTA}%s${RESET} | Ctx orquestador: ${PCT_COLOR}%s%%${RESET}%b%b\n" "$MODEL" "$DIR" "$PCT" "$MARK" "$KIT_MARK"
