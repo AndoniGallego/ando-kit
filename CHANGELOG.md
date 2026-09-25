@@ -3,6 +3,16 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.8.2] — 2026-09-25
+
+Opus 5.5 pasa a ser el modelo del orquestador.
+
+### Changed
+- Template: la sesión principal corre en Opus 5.5 y los subagentes mecánicos siguen en `haiku`/`sonnet` con modelo explícito. Se corrige la nota de fast-mode, que corre Opus más rápido y no baja a Haiku.
+
+### Fixed
+- Hooks de contexto (statusline y umbral): la tabla de fallback reconoce `opus-5*` en vez de caer al default.
+
 ## [2.8.1] — 2026-09-23
 
 Statusline más limpia y protocolos del template formalizados.
