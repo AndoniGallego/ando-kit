@@ -29,7 +29,7 @@ CONTEXT_WINDOW=$(echo "$INPUT" | jq -r '.context_window.context_window_size // e
 if [ -z "$CONTEXT_WINDOW" ] || [ "$CONTEXT_WINDOW" = "null" ]; then
   MODEL_ID=$(echo "$INPUT" | jq -r '(.model.display_name // "") + (.model.id // "")' 2>/dev/null)
   case "$MODEL_ID" in
-    *sonnet-4-6*|*sonnet-4-7*|*sonnet-4-8*|*sonnet-5*|*opus-4*|*fable-5*) CONTEXT_WINDOW=1000000 ;;
+    *sonnet-4-6*|*sonnet-4-7*|*sonnet-4-8*|*sonnet-5*|*opus-4*|*opus-5*|*fable-5*) CONTEXT_WINDOW=1000000 ;;
     *haiku-4-5*) CONTEXT_WINDOW=200000 ;;
     *) CONTEXT_WINDOW=1000000 ;;
   esac

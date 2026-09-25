@@ -29,11 +29,10 @@
 #   3. Default hardcoded si nada de lo anterior está disponible.
 #
 # Fallback table — actualizar si aparece un modelo nuevo o cambia su ventana:
-#   Sonnet 4.6/4.7/4.8, Sonnet 5, Opus 4.x, Fable 5  -> 1,000,000 tokens
-#   Haiku 4.5                                        -> 200,000 tokens
-#   Default (modelo desconocido)                     -> 1,000,000 (Sonnet 5 es el modelo
-#                                                        de sesión actual y el más común
-#                                                        en esta cuenta; ajustar si cambia)
+#   Sonnet 4.6/4.7/4.8, Sonnet 5, Opus 4.x/5.x, Fable 5 -> 1,000,000 tokens
+#   Haiku 4.5                                           -> 200,000 tokens
+#   Default (modelo desconocido)                        -> 1,000,000 (Opus 5.5 es el modelo
+#                                                           de sesión actual; ajustar si cambia)
 
 INPUT=$(cat)
 MODEL=$(echo "$INPUT" | jq -r '.model.display_name // "Claude"')
@@ -44,7 +43,7 @@ TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 CONTEXT_WINDOW=$(echo "$INPUT" | jq -r '.context_window.context_window_size // empty')
 if [ -z "$CONTEXT_WINDOW" ] || [ "$CONTEXT_WINDOW" = "null" ]; then
   case "$MODEL$MODEL_ID" in
-    *sonnet-4-6*|*sonnet-4-7*|*sonnet-4-8*|*sonnet-5*|*opus-4*|*fable-5*) CONTEXT_WINDOW=1000000 ;;
+    *sonnet-4-6*|*sonnet-4-7*|*sonnet-4-8*|*sonnet-5*|*opus-4*|*opus-5*|*fable-5*) CONTEXT_WINDOW=1000000 ;;
     *haiku-4-5*) CONTEXT_WINDOW=200000 ;;
     *) CONTEXT_WINDOW=1000000 ;;
   esac
