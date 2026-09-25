@@ -117,7 +117,9 @@ Antes de reportar `DONE`, autoevaluate el resultado 1-10 contra lo pedido. Si es
 
 ## Optimización de costos — subagentes y selección de modelo
 
-Al dispatchar un subagente implementador, especificá el modelo explícitamente cuando el harness lo permita — un modelo omitido hereda el de la sesión (normalmente el más caro).
+**Modelo del orquestador (sesión principal): Opus 5.5.** Desde Opus 5.5 ($4/$20 por M, cache read $0.20/M, igual que Sonnet 5 a $3/$15) la brecha de costo por sesión agéntica es chica, porque domina la lectura de caché, y el orquestador es justo donde más pesa el juicio: planificar, delegar y verificar. El volumen mecánico queda en subagentes más baratos.
+
+Al dispatchar un subagente implementador, especificá el modelo explícitamente cuando el harness lo permita — un modelo omitido hereda el de la sesión (Opus).
 
 | Escenario | Enfoque | Modelo sugerido |
 |-----------|---------|------------------|
@@ -130,7 +132,7 @@ El reviewer es overhead real — omitirlo en tareas mecánicas (1 archivo, renom
 **Selección dinámica para agentes de juicio** (`code-architect`, `doc-writer`, `frontend-reviewer`, `spec-writer`, `test-strategist`, `pr-analyst`, `security-auditor`, `spec-updater`): ninguno fija `model` en su frontmatter a propósito — el Agent tool acepta un `model` explícito por invocación que tiene prioridad sobre el frontmatter del agente, así que la decisión la toma el orquestador caso a caso según la complejidad de ESA tarea puntual, no un valor fijo:
 - Juicio simple/acotado (revisar un componente chico, spec de una feature bien delimitada) → `sonnet`.
 - Juicio complejo/ambiguo/alto riesgo (arquitectura de un sistema nuevo, seguridad de un cambio crítico, spec de una migración de datos) → `opus`.
-- Si la sesión corre en fast-mode (Haiku) y la tarea de juicio no es trivial, forzar `model: sonnet` explícito como piso al invocar — nunca dejar que un agente de juicio herede Haiku por default de una sesión rápida.
+- Si la sesión corre en Haiku y la tarea de juicio no es trivial, forzar `model: sonnet` explícito como piso al invocar — nunca dejar que un agente de juicio herede Haiku. (El fast-mode de Claude Code corre Opus más rápido, no baja a Haiku.)
 
 ## ¿Skill, agent o hook?
 
