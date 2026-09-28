@@ -3,6 +3,16 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.9.0] - 2026-09-28
+
+### Added
+- Stop-rules cuantificadas en `CLAUDE.md.template` para delegar exploración/investigación (4+ archivos, 3+ comandos de shell), no solo implementación.
+- Regla para no relanzar agentes en background al reanudar una sesión cortada por límite de uso.
+- Guía para minimizar wake-ups del orquestador: foreground para chequeos cortos, un agente por N objetivos, no actuar sobre mensajes intermedios.
+
+### Changed
+- `autoCompactWindow` de la plantilla de `settings.json` (`install.sh`) fijado en 200000: con ventana de 1M el auto-compact nativo no se disparaba a tiempo.
+
 ## [2.8.2] — 2026-09-25
 
 Opus 5.5 pasa a ser el modelo del orquestador.
