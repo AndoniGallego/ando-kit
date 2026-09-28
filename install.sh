@@ -113,6 +113,7 @@ cat << 'EOF'
       }
     ]
   },
+  "autoCompactWindow": 200000,
   "statusLine": {
     "type": "command",
     "command": "$HOME/.local/bin/ando-statusline-context.sh"
