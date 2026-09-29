@@ -151,7 +151,7 @@ El reviewer es overhead real — omitirlo en tareas mecánicas (1 archivo, renom
 - `/doubt-driven` — revisión adversarial con subagente ciego al razonamiento propio, antes de un cambio de alto impacto
 - `/judgment-day` — revisión dual ciega con dos jueces en paralelo, síntesis y re-juicio hasta aprobar
 - `/rdd-review` — revisión de esfuerzo proporcional al riesgo: freeze del diff, tiering Bajo/Medio/Alto, 0/1/4 lentes, receipt en Engram. Informacional, nunca bloquea. Escala a `/judgment-day` o `/doubt-driven` ante contradicciones
-- `/code-architect` — guía de arquitectura (Hexagonal / DDD lightweight / adaptar a lo existente) + reglas de código al implementar
+- `/code-architect` — guía de arquitectura (escalera de menor esfuerzo + Hexagonal / DDD lightweight / adaptar a lo existente) + reglas de código al implementar
 - `/pr-review` — revisión técnica de PRs/MRs, solo lectura
 - `/work-unit-commits` — planificar commits atómicos y revisables antes de implementar
 - `/handoff` — arma en un paso el contexto para retomar trabajo ajeno (ticket + PR/branch + historial git + spec)
@@ -172,6 +172,7 @@ Autoupdate del kit (sustituto de cron — Windows no tiene): el hook `ando-kit-u
 - `/e2e-test` — correr tests e2e de navegador (Playwright, vía Docker) contra un dev server local: flujo de usuario o auditoría de consola/CSP
 - `/visual-regression` — cambios visuales no intencionales, screenshot vs baseline
 - `/browser-session` — tareas puntuales en tu navegador real ya logueado (no Playwright)
+- `/ui-design-system` — identidad visual de apps de escritorio/dashboards: paleta, tipografía, estilo de componentes y checklist UX/a11y, con base local de datos (MIT, upstream ui-ux-pro-max-skill). Consultar en inglés
 
 ## Agents disponibles en este kit
 

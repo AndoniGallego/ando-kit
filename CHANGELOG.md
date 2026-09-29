@@ -3,6 +3,12 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.10.0] - 2026-09-29
+
+### Added
+- Skill `ui-design-system`: base local de estilos, paletas, tipografía y guías UX (datos MIT de ui-ux-pro-max-skill @ 09170eec, recortados a apps de escritorio y stacks Svelte/Vue/HTML) con `search.py` propio (stdlib, sin red) y checklist UX/a11y.
+- Paso 0 "Escalera de menor esfuerzo" en `code-architect` (skill y agente), inspirado en ponytail: existir, ya en el repo, stdlib, nativo, dependencia.
+
 ## [2.9.0] - 2026-09-28
 
 ### Added
