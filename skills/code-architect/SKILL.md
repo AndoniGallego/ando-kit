@@ -9,6 +9,18 @@ Este skill se invoca **antes de implementar**, nunca durante ni después. Su out
 
 > Hay también un **agente** `code-architect` con el mismo criterio: usalo cuando querés la propuesta hecha en **contexto aislado** (el agente explora el repo y devuelve solo el diseño + envelope AOP v2, sin gastar el contexto principal). Este skill es para cuando ya estás en el flujo y querés guiar la decisión vos mismo paso a paso.
 
+## Paso 0 — Escalera de menor esfuerzo
+
+Antes del diagnóstico, subir esta escalera y frenar en el primer escalón que resuelve el problema. Cada escalón salteado tiene que poder justificarse.
+
+1. ¿Tiene que existir? Si el pedido se cumple sin código nuevo (config, borrar algo, cambiar el uso), no se escribe nada.
+2. ¿Ya está en el repo? Buscar antes de crear: helper, componente o módulo existente que se pueda reusar o extender.
+3. ¿Lo resuelve la librería estándar del lenguaje?
+4. ¿Hay una feature nativa de la plataforma o del framework ya en uso?
+5. ¿Hay una dependencia ya instalada? Recién al final, y solo si aporta más de lo que cuesta mantenerla, una nueva.
+
+Si el código nuevo es inevitable, proponer lo mínimo que cumple lo pedido. Anotar la deuda que queda a propósito (qué se dejó afuera y por qué) en el entregable.
+
 ## Paso 1 — Diagnóstico: ¿qué tipo de trabajo es?
 
 Antes de proponer nada, responder tres preguntas:
