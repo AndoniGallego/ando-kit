@@ -8,6 +8,7 @@
 #   ~/.claude/agents/*.md        <->  ando-kit/agents/*.md
 #   ~/.claude/rules/*.md         <->  ando-kit/rules/*.md
 #   ~/.local/bin/ando-*.sh       <->  ando-kit/hooks/*.sh
+#   ~/.claude/scripts/ando-kit-check.sh <-> ando-kit/scripts/ando-kit-check.sh
 #
 # Se dispara en cada Write/Edit. Si el archivo no está en ninguna ruta
 # monitoreada, sale silenciosamente. Los hooks NUNCA deben romper el flujo
@@ -113,6 +114,16 @@ fi
 if [[ "$FILE_PATH" == "$ANDO_KIT_DIR/rules/"*.md ]]; then
     REL_PATH="${FILE_PATH#"$ANDO_KIT_DIR"/rules/}"
     sync_copy "$FILE_PATH" "$CLAUDE/rules/$REL_PATH"
+    exit 0
+fi
+
+# ~/.claude/scripts/ando-kit-check.sh <-> ando-kit/scripts/ando-kit-check.sh
+if [[ "$FILE_PATH" == "$CLAUDE/scripts/ando-kit-check.sh" ]]; then
+    sync_copy "$FILE_PATH" "$ANDO_KIT_DIR/scripts/ando-kit-check.sh"
+    exit 0
+fi
+if [[ "$FILE_PATH" == "$ANDO_KIT_DIR/scripts/ando-kit-check.sh" ]]; then
+    sync_copy "$FILE_PATH" "$CLAUDE/scripts/ando-kit-check.sh"
     exit 0
 fi
 

@@ -8,10 +8,11 @@ SKILLS_DIR="$HOME/.claude/skills"
 AGENTS_DIR="$HOME/.claude/agents"
 RULES_DIR="$HOME/.claude/rules"
 HOOKS_DIR="$HOME/.local/bin"
+SCRIPTS_DIR="$HOME/.claude/scripts"
 
 echo "== ando-kit installer =="
 echo "Kit encontrado en: $KIT_DIR"
-mkdir -p "$SKILLS_DIR" "$AGENTS_DIR" "$RULES_DIR" "$HOOKS_DIR"
+mkdir -p "$SKILLS_DIR" "$AGENTS_DIR" "$RULES_DIR" "$HOOKS_DIR" "$SCRIPTS_DIR"
 
 echo ""
 echo "-- Skills --"
@@ -55,6 +56,12 @@ for f in "$KIT_DIR"/hooks/*.sh; do
   count=$((count+1))
 done
 echo "Hooks instalados: $count"
+
+echo ""
+echo "-- Scripts --"
+cp "$KIT_DIR/scripts/ando-kit-check.sh" "$SCRIPTS_DIR/"
+chmod +x "$SCRIPTS_DIR/ando-kit-check.sh"
+echo "  ✓ ando-kit-check.sh"
 
 echo ""
 echo "-- Variable de entorno ANDO_KIT_DIR --"
