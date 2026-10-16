@@ -4,6 +4,12 @@
 #
 # Uso:   bash ~/.claude/skills/kit-doctor/scripts/doctor.sh
 # Exit:  0 si no hay ❌; 1 si hay al menos un ❌. Los ⚠️ no cambian el exit code.
+#
+# Consume el JSON de scripts/ando-kit-check.sh (única implementación de los chequeos).
+# Si ese script falta, cuelga, sale con 2 o devuelve JSON inválido, caemos a los
+# chequeos embebidos (legacy_checks): el doctor es lo que se corre cuando algo anda
+# mal, así que no puede depender de que el script esté sano para diagnosticar.
+# Env: ANDO_KIT_CHECK_SCRIPT (override de ruta), ANDO_KIT_DOCTOR_CHECK_TIMEOUT (default 10 s).
 
 set -uo pipefail
 
@@ -18,8 +24,7 @@ warn() { echo "  ⚠️  $1"; WARN=$((WARN+1)); }
 fail() { echo "  ❌ $1"; FAIL=$((FAIL+1)); }
 info() { echo "  ℹ️  $1"; }
 
-echo "=== kit-doctor ==="
-
+legacy_checks() {
 # --- KIT DIR ---
 section "KIT"
 if [ -z "${ANDO_KIT_DIR:-}" ]; then
@@ -162,6 +167,66 @@ if command -v claude >/dev/null 2>&1; then
   else
     warn "Engram MCP registrado pero no conectado"
   fi
+fi
+
+}
+
+# Devuelve 0 y deja el JSON en $CHECK_JSON; si no, deja el motivo en $DEGRADED_REASON.
+run_check() {
+  local script="" c self_dir
+  self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [ -n "${ANDO_KIT_CHECK_SCRIPT:-}" ]; then
+    script="$ANDO_KIT_CHECK_SCRIPT"
+  else
+    for c in "$self_dir/../../../scripts/ando-kit-check.sh" "$KIT/scripts/ando-kit-check.sh" "$CLAUDE/scripts/ando-kit-check.sh"; do
+      [ -f "$c" ] && { script="$c"; break; }
+    done
+  fi
+  [ -n "$script" ] && [ -f "$script" ] || { DEGRADED_REASON="ando-kit-check.sh no encontrado"; return 1; }
+  command -v jq >/dev/null 2>&1 || { DEGRADED_REASON="jq no disponible"; return 1; }
+
+  # En Windows `timeout` puede ser timeout.exe de System32 (no es GNU).
+  local to_secs="${ANDO_KIT_DOCTOR_CHECK_TIMEOUT:-10}" out rc
+  if timeout --version 2>&1 | grep -q GNU; then
+    out=$(timeout -k 2 "$to_secs" bash "$script" 2>/dev/null); rc=$?
+  else
+    out=$(bash "$script" 2>/dev/null); rc=$?
+  fi
+  case "$rc" in
+    124|137) DEGRADED_REASON="ando-kit-check.sh excedió ${to_secs}s"; return 1 ;;
+    0|1) ;;
+    *) DEGRADED_REASON="ando-kit-check.sh salió con código $rc"; return 1 ;;
+  esac
+  printf '%s' "$out" | jq -e '
+    (.report | type == "object" and length > 0)
+    and ([.report[] | type == "array"] | all)
+    and ([.report[][] | (.level | IN("ok","warn","fail","info")) and (.text | type == "string")] | all)
+  ' >/dev/null 2>&1 || { DEGRADED_REASON="ando-kit-check.sh devolvió JSON inválido"; return 1; }
+  CHECK_JSON="$out"
+}
+
+render_check() {
+  local sec level text last=""
+  while IFS=$'\t' read -r sec level text; do
+    text="${text%$'\r'}"
+    if [ "$sec" != "$last" ]; then section "$sec"; last="$sec"; fi
+    case "$level" in
+      ok) ok "$text" ;;
+      warn) warn "$text" ;;
+      fail) fail "$text" ;;
+      *) info "$text" ;;
+    esac
+  done < <(printf '%s' "$CHECK_JSON" | jq -r '.report | to_entries[] | .key as $s | .value[] | [$s, .level, .text] | @tsv')
+}
+
+echo "=== kit-doctor ==="
+
+CHECK_JSON=""; DEGRADED_REASON=""
+if run_check; then
+  render_check
+else
+  info "modo degradado: $DEGRADED_REASON"
+  legacy_checks
 fi
 
 echo ""
