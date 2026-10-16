@@ -3,6 +3,12 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.10.1] - 2026-10-16
+
+### Fixed
+- `kit-doctor`: el chequeo de Engram usa `claude mcp get` (prueba `engram` y `plugin:engram:engram`) en vez de `mcp list`, que es lento y daba falsos negativos. Distingue registrado de conectado.
+- `.gitattributes`: fuerza LF también en `*.json`, `*.yml` y `*.yaml` (Windows con `core.autocrlf`).
+
 ## [2.10.0] - 2026-09-29
 
 ### Added

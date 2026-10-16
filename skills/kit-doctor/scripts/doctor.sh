@@ -149,7 +149,19 @@ else
   info "ANDO_SPECS_DIR sin setear — el gate SDD no actúa (es opt-in)"
 fi
 if command -v claude >/dev/null 2>&1; then
-  claude mcp list 2>/dev/null | grep -qiE 'engram.*(connected|✓)' && ok "Engram MCP conectado" || info "Engram MCP no aparece conectado (opcional — la memoria persistente no estará disponible)"
+  # `mcp list` hace health-check de todos los servers y tarda; `mcp get` consulta solo uno.
+  TO=""; timeout --version >/dev/null 2>&1 && TO="timeout 10"
+  engram_mcp=""
+  for n in engram plugin:engram:engram; do
+    if out=$($TO claude mcp get "$n" 2>/dev/null); then engram_mcp="$out"; break; fi
+  done
+  if [ -z "$engram_mcp" ]; then
+    info "Engram MCP no registrado (opcional — la memoria persistente no estará disponible)"
+  elif printf '%s\n' "$engram_mcp" | grep -qiE '^[[:space:]]*status:.*connected'; then
+    ok "Engram MCP conectado"
+  else
+    warn "Engram MCP registrado pero no conectado"
+  fi
 fi
 
 echo ""
