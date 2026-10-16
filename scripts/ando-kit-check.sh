@@ -1,0 +1,194 @@
+#!/bin/bash
+# ando-kit-check.sh — única implementación de los chequeos de salud del ando-kit.
+# Read-only: nunca modifica nada.
+#
+# Contrato: stdout = UN documento JSON
+#   {"version":"..","report":{"<seccion>":[{"level":"ok|warn|fail|info","text":".."}]},
+#    "summary":{"ok":N,"warn":N,"fail":N}}
+# stderr = progreso legible. Nunca se imprimen secretos.
+# Exit: 0 sin fails, 1 con algún fail, 2 uso/fatal.
+
+set -uo pipefail
+
+if [ "$#" -gt 0 ]; then
+  echo "uso: ando-kit-check.sh (sin argumentos; env: ANDO_KIT_DIR, HOME)" >&2
+  exit 2
+fi
+command -v jq >/dev/null 2>&1 || { echo "ando-kit-check: jq no disponible" >&2; exit 2; }
+
+KIT="${ANDO_KIT_DIR:-$HOME/ando-kit}"
+CLAUDE="$HOME/.claude"
+HOOKS_BIN="$HOME/.local/bin"
+PASS=0; WARN=0; FAIL=0
+SECTION=""
+RECORDS=()
+
+section() { SECTION="$1"; echo "" >&2; echo "$1" >&2; }
+rec() {
+  local level="$1" text="${2//$'\n'/ }"
+  text="${text//$'\t'/ }"
+  RECORDS+=("$SECTION"$'\t'"$level"$'\t'"$text")
+  echo "  [$level] $text" >&2
+}
+ok()   { rec ok "$1";   PASS=$((PASS+1)); }
+warn() { rec warn "$1"; WARN=$((WARN+1)); }
+fail() { rec fail "$1"; FAIL=$((FAIL+1)); }
+info() { rec info "$1"; }
+
+# --- KIT DIR ---
+section "KIT"
+if [ -z "${ANDO_KIT_DIR:-}" ]; then
+  warn "ANDO_KIT_DIR no está seteado — usando fallback $KIT (setealo en ~/.claude/settings.json → env y en tu shell rc)"
+fi
+if [ -d "$KIT" ] && [ -d "$KIT/skills" ] && [ -d "$KIT/agents" ] && [ -d "$KIT/hooks" ]; then
+  ok "kit en $KIT (skills/ agents/ hooks/ presentes)"
+  [ -f "$KIT/VERSION" ] && ok "versión del kit: $(tr -d '[:space:]' < "$KIT/VERSION")" || warn "sin archivo VERSION en el kit"
+  if [ -d "$KIT/.git" ]; then
+    BEHIND=$(git -C "$KIT" rev-list --count '@..@{u}' 2>/dev/null)
+    [ -n "$BEHIND" ] && [ "$BEHIND" -gt 0 ] 2>/dev/null && warn "kit $BEHIND commit(s) atrás de su upstream (git -C \"$KIT\" pull)" || ok "kit git: al día con upstream (o sin upstream configurado)"
+    [ -n "$(git -C "$KIT" status --porcelain 2>/dev/null)" ] && info "hay cambios sin commitear en el kit (normal si estás iterando)"
+    UPDATE_MARKER="$HOME/.claude/.ando-kit-update-check"
+    if [ -f "$UPDATE_MARKER" ]; then
+      LAST_CHECK_MIN=$(( ($(date +%s) - $(stat -c '%Y' "$UPDATE_MARKER" 2>/dev/null || stat -f '%m' "$UPDATE_MARKER" 2>/dev/null || echo 0)) / 60 ))
+      info "último chequeo de actualización: hace ${LAST_CHECK_MIN} min (cada ${ANDO_KIT_UPDATE_CHECK_HOURS:-12}hs vía ando-kit-update-check.sh)"
+    else
+      info "todavía no corrió ando-kit-update-check.sh en esta máquina (corre en el próximo SessionStart si está registrado)"
+    fi
+    [ "${ANDO_KIT_AUTOUPDATE:-0}" = "1" ] && info "ANDO_KIT_AUTOUPDATE=1 — el kit se actualiza solo cuando hay novedades y el working tree está limpio"
+  else
+    info "$KIT no es repo git — kit-bump/kit-sync funcionan parcial (sin tags ni historial)"
+  fi
+else
+  fail "no se encontró un kit válido en $KIT"
+fi
+
+# --- DEPENDENCIAS ---
+section "DEPENDENCIAS"
+ok "jq disponible (los hooks lo necesitan)"
+command -v git >/dev/null 2>&1 && ok "git disponible" || fail "git NO disponible"
+
+# --- SYNC kit <-> ~/.claude ---
+section "SYNC"
+sync_dir() {
+  local label="$1" src="$2" dst="$3" pat="$4"
+  [ -d "$src" ] || { warn "$label: origen $src no existe"; return; }
+  local missing=0 diffs=0 f rel
+  while IFS= read -r f; do
+    rel="${f#"$src"/}"
+    if [ ! -e "$dst/$rel" ]; then
+      missing=$((missing+1))
+    elif ! diff -q "$f" "$dst/$rel" >/dev/null 2>&1; then
+      diffs=$((diffs+1))
+    fi
+  done < <(find "$src" -type f -name "$pat" 2>/dev/null)
+  if [ "$missing" -eq 0 ] && [ "$diffs" -eq 0 ]; then
+    ok "$label en sync con el kit"
+  else
+    warn "$label: $missing sin instalar, $diffs distinto(s) — correr 'bash $KIT/install.sh'"
+  fi
+}
+sync_dir "skills" "$KIT/skills" "$CLAUDE/skills" "*.md"
+sync_dir "agents" "$KIT/agents" "$CLAUDE/agents" "*.md"
+
+HOOK_DRIFT=0
+for f in "$KIT"/hooks/*.sh; do
+  [ -e "$f" ] || continue
+  b=$(basename "$f")
+  if [ ! -f "$HOOKS_BIN/$b" ]; then
+    warn "hook $b no instalado en $HOOKS_BIN"; HOOK_DRIFT=1
+  elif ! diff -q "$f" "$HOOKS_BIN/$b" >/dev/null 2>&1; then
+    warn "hook $b difiere del kit"; HOOK_DRIFT=1
+  fi
+done
+[ "$HOOK_DRIFT" -eq 0 ] && ok "hooks en sync con el kit"
+
+# --- HOOKS: ejecutables y sintaxis ---
+section "HOOKS"
+for f in "$HOOKS_BIN"/ando-*.sh; do
+  [ -e "$f" ] || { warn "no hay hooks ando-* en $HOOKS_BIN — correr install.sh"; break; }
+  b=$(basename "$f")
+  [ -x "$f" ] || warn "$b no tiene permiso de ejecución (chmod +x)"
+  bash -n "$f" 2>/dev/null && : || fail "$b: error de sintaxis"
+done
+[ "$FAIL" -eq 0 ] && [ -e "$HOOKS_BIN/ando-kit-sync.sh" ] && ok "hooks ejecutables y sin errores de sintaxis"
+
+# --- SETTINGS: hooks registrados ---
+section "SETTINGS"
+SETTINGS="$CLAUDE/settings.json"
+if [ -f "$SETTINGS" ]; then
+  ok "settings.json presente"
+  for h in ando-kit-sync ando-delegation-reminder ando-context-threshold ando-engram-check-reminder ando-prepush-check ando-rdd-reminder ando-git-trust-check ando-kit-update-check ando-statusline-context; do
+    grep -q "$h" "$SETTINGS" && ok "registrado: $h" || warn "hook $h instalado pero NO referenciado en settings.json"
+  done
+  grep -q "ando-doctor-sessionstart" "$SETTINGS" 2>/dev/null && ok "registrado: ando-doctor-sessionstart (SessionStart)" \
+    || { [ -f "$HOOKS_BIN/ando-doctor-sessionstart.sh" ] && info "ando-doctor-sessionstart.sh instalado pero no registrado (agregalo como hook SessionStart si lo querés automático)"; }
+else
+  fail "no hay $SETTINGS"
+fi
+
+# --- CLAUDE.md ---
+section "CLAUDE.md"
+GLOBAL_MD="$CLAUDE/CLAUDE.md"
+if [ -f "$GLOBAL_MD" ]; then
+  if grep -q 'ANDO_KIT_DIR\|ando-kit\|Flujo SDD' "$GLOBAL_MD"; then
+    ok "~/.claude/CLAUDE.md presente y menciona el kit"
+  else
+    warn "~/.claude/CLAUDE.md existe pero no parece incluir las reglas del kit — copiá desde CLAUDE.md.template"
+  fi
+else
+  fail "no hay ~/.claude/CLAUDE.md — sin él las reglas de orquestación/SDD/AOP no están activas. Copiá: cp \"\$ANDO_KIT_DIR/CLAUDE.md.template\" ~/.claude/CLAUDE.md"
+fi
+
+# --- SEGURIDAD ---
+section "SEGURIDAD"
+if [ -x "$HOOKS_BIN/ando-git-trust-check.sh" ]; then
+  ok "ando-git-trust-check.sh instalado (defensa GitSpawn — bloquea git en repos con .git/config sospechoso)"
+  ALLOW_FILE="$CLAUDE/.ando-git-trust-allow"
+  if [ -f "$ALLOW_FILE" ]; then
+    N=$(grep -c . "$ALLOW_FILE" 2>/dev/null || echo 0)
+    info "allowlist de repos propios: $N entrada(s) en $ALLOW_FILE"
+  fi
+else
+  fail "ando-git-trust-check.sh no instalado — sin defensa contra GitSpawn (core.fsmonitor y similares en .git/config de terceros)"
+fi
+if command -v gitleaks >/dev/null 2>&1; then
+  ok "gitleaks disponible ($(gitleaks version 2>/dev/null | head -1)) — chequeo de secretos activo en ando-prepush-check.sh"
+else
+  info "gitleaks no instalado (opcional) — sin chequeo de secretos en el pre-push. brew install gitleaks / scoop install gitleaks / apt install gitleaks"
+fi
+
+# --- OPCIONALES ---
+section "OPCIONALES"
+if [ -n "${ANDO_SPECS_DIR:-}" ]; then
+  [ -d "$ANDO_SPECS_DIR" ] && ok "ANDO_SPECS_DIR → $ANDO_SPECS_DIR (gate SDD activo)" || warn "ANDO_SPECS_DIR apunta a un dir inexistente: $ANDO_SPECS_DIR"
+else
+  info "ANDO_SPECS_DIR sin setear — el gate SDD no actúa (es opt-in)"
+fi
+if command -v claude >/dev/null 2>&1; then
+  # `mcp list` hace health-check de todos los servers y tarda; `mcp get` consulta solo uno.
+  TO=""; timeout --version >/dev/null 2>&1 && TO="timeout 10"
+  engram_mcp=""
+  for n in engram plugin:engram:engram; do
+    if out=$($TO claude mcp get "$n" 2>/dev/null); then engram_mcp="$out"; break; fi
+  done
+  if [ -z "$engram_mcp" ]; then
+    info "Engram MCP no registrado (opcional — la memoria persistente no estará disponible)"
+  elif printf '%s\n' "$engram_mcp" | grep -qiE '^[[:space:]]*status:.*connected'; then
+    ok "Engram MCP conectado"
+  else
+    warn "Engram MCP registrado pero no conectado"
+  fi
+fi
+
+VERSION_STR=""
+[ -f "$KIT/VERSION" ] && VERSION_STR=$(tr -d '[:space:]' < "$KIT/VERSION")
+
+printf '%s\n' "${RECORDS[@]}" | jq -R -s --arg version "$VERSION_STR" \
+  --argjson ok "$PASS" --argjson warn "$WARN" --argjson fail "$FAIL" '
+  (split("\n") | map(select(length > 0) | split("\t") | {s: .[0], level: .[1], text: .[2]})) as $r
+  | {version: $version,
+     report: (reduce $r[] as $x ({}; .[$x.s] += [{level: $x.level, text: $x.text}])),
+     summary: {ok: $ok, warn: $warn, fail: $fail}}'
+
+[ "$FAIL" -gt 0 ] && exit 1
+exit 0
