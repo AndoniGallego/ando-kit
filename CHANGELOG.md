@@ -3,6 +3,15 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.11.0] - 2026-10-16
+
+### Added
+- `scripts/ando-kit-check.sh`: única implementación de los chequeos de salud, con contrato JSON (stdout = un documento, stderr = progreso, exit 0/1/2). Se instala en `~/.claude/scripts/` y `ando-kit-sync.sh` lo sincroniza.
+- `tests/`: suite en bash plano (contrato del check y modo degradado del doctor), con `tests/run-all.sh`.
+
+### Changed
+- `kit-doctor` consume `ando-kit-check.sh` (una llamada con timeout, forma validada) y, si falta, cuelga, sale con 2 o devuelve JSON inválido, cae a sus chequeos embebidos con la línea `modo degradado`. Patrón portado del aperkit.
+
 ## [2.10.1] - 2026-10-16
 
 ### Fixed
