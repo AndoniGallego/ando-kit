@@ -100,6 +100,12 @@ cat << 'EOF'
           { "type": "command", "command": "$HOME/.local/bin/ando-prepush-check.sh", "timeout": 10 },
           { "type": "command", "command": "$HOME/.local/bin/ando-rdd-reminder.sh", "timeout": 10 }
         ]
+      },
+      {
+        "matcher": "Read|Bash|Grep|Glob",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.local/bin/ando-env-guard.sh", "timeout": 5 }
+        ]
       }
     ],
     "PostToolUse": [
@@ -120,6 +126,17 @@ cat << 'EOF'
       }
     ]
   },
+  "permissions": {
+    "allow": ["Read(**/.env.example)", "Read(**/.env.dist)", "Read(**/.env.sample)", "Read(**/.env.template)"],
+    "ask": ["Edit(**/.env.example)", "Edit(**/.env.dist)", "Edit(**/.env.sample)", "Edit(**/.env.template)"],
+    "deny": [
+      "Read(**/.env.*)",
+      "Read(**/.env)", "Read(**/.env.local)", "Read(**/.env.*.local)", "Read(**/.env.prod*)", "Read(**/.env.production*)",
+      "Read(**/.env.dev*)", "Read(**/.env.staging*)", "Read(**/.env.uat*)", "Read(**/.envrc)",
+      "Edit(**/.env)", "Edit(**/.env.local)", "Edit(**/.env.*.local)", "Edit(**/.env.prod*)", "Edit(**/.env.production*)",
+      "Edit(**/.env.dev*)", "Edit(**/.env.staging*)", "Edit(**/.env.uat*)", "Edit(**/.envrc)"
+    ]
+  },
   "autoCompactWindow": 200000,
   "statusLine": {
     "type": "command",
@@ -130,6 +147,9 @@ EOF
 echo ""
 echo "Notas:"
 echo "  - ando-sdd-gate.sh NO se registra como hook — lo invoca ando-prepush-check.sh."
+echo "  - ando-env-guard.sh (PreToolUse Read|Bash|Grep|Glob) deniega la lectura de .env reales por cualquier"
+echo "    herramienta. Mientras no esté cableado y verificado, dejá 'Read(**/.env.*)' en deny; recién"
+echo "    con el hook andando sacalo (las plantillas .env.example/.dist/.sample/.template quedan en allow)."
 echo "  - ando-doctor-sessionstart.sh es opcional: registralo como SessionStart (arriba) si querés"
 echo "    el chequeo de salud automático al arrancar. Corré /kit-doctor cuando quieras el detalle."
 echo "  - ando-kit-update-check.sh (sustituto de cron — Windows no tiene): en cada sesión, como"

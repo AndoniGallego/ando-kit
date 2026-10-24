@@ -28,3 +28,16 @@ assert_not_contains() {
 }
 
 finish() { echo "pass=$PASS fail=$FAIL"; [ "$FAIL" -eq 0 ]; }
+
+# run_isolated "<nombre>" <función> — corre la función en un subshell con su propio
+# TEST_TMP y HOME descartables; ok si sale 0. Lo que la función imprime se muestra solo si falla.
+run_isolated() {
+  local name="$1" fn="$2" out rc
+  out="$(
+    TEST_TMP="$(mktemp -d)"
+    trap 'rm -rf "$TEST_TMP"' EXIT
+    export HOME="$TEST_TMP/home"; mkdir -p "$HOME"
+    "$fn" 2>&1
+  )"; rc=$?
+  if [ "$rc" -eq 0 ]; then case_pass "$name"; else case_fail "$name${out:+ -> $out}"; fi
+}
