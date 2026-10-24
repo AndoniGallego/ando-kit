@@ -25,6 +25,13 @@ set -uo pipefail
 KIT_DIR="${ANDO_KIT_DIR:-}"
 [ -n "$KIT_DIR" ] && [ -d "$KIT_DIR/.git" ] || exit 0
 
+write_cache_atomic() { # ARCHIVO CONTENIDO — temporal en el mismo dir + mv, para que otra instancia no lea a medias
+  local tmp
+  tmp=$(mktemp "$1.XXXXXX" 2>/dev/null) || return 0
+  if printf '%s' "$2" > "$tmp" 2>/dev/null && mv -f "$tmp" "$1" 2>/dev/null; then :; else rm -f "$tmp" 2>/dev/null; fi
+  return 0
+}
+
 HOURS="${ANDO_KIT_UPDATE_CHECK_HOURS:-12}"
 MARKER="$HOME/.claude/.ando-kit-update-check"
 mkdir -p "$(dirname "$MARKER")" 2>/dev/null
@@ -40,7 +47,7 @@ KV=$(tr -d '[:space:]' < "$KIT_DIR/VERSION" 2>/dev/null)
 BEHIND=$(git -C "$KIT_DIR" rev-list --count 'HEAD..@{u}' 2>/dev/null)
 OUT="v${KV:-?}"
 [ -n "$BEHIND" ] && [ "$BEHIND" -gt 0 ] 2>/dev/null && OUT="$OUT ↑$BEHIND"
-printf '%s' "$OUT" > "$HOME/.claude/.ando-kit-status" 2>/dev/null
+write_cache_atomic "$HOME/.claude/.ando-kit-status" "$OUT"
 
 [ -n "$BEHIND" ] && [ "$BEHIND" -gt 0 ] 2>/dev/null || exit 0
 

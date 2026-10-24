@@ -91,6 +91,12 @@ fi
 # --- Estado del kit: versión + drift vs upstream. Cacheado (máx 1 refresh / 5 min) —
 #     NUNCA corre git en cada render, y NUNCA hace fetch (sin red en la statusline):
 #     el "↑N" refleja lo que git ya sabe del remoto tras el último fetch/pull.
+write_cache_atomic() { # ARCHIVO CONTENIDO — temporal en el mismo dir + mv, para que otra instancia no lea a medias
+  local tmp
+  tmp=$(mktemp "$1.XXXXXX" 2>/dev/null) || return 0
+  if printf '%s' "$2" > "$tmp" 2>/dev/null && mv -f "$tmp" "$1" 2>/dev/null; then :; else rm -f "$tmp" 2>/dev/null; fi
+  return 0
+}
 KIT_MARK=""
 KIT_DIR="${ANDO_KIT_DIR:-}"
 if [ -n "$KIT_DIR" ] && [ -d "$KIT_DIR/.git" ]; then
@@ -101,7 +107,7 @@ if [ -n "$KIT_DIR" ] && [ -d "$KIT_DIR/.git" ]; then
     OUT="v${KV:-?}"
     [ -n "$BEHIND" ] && [ "$BEHIND" -gt 0 ] 2>/dev/null && OUT="$OUT ↑$BEHIND"
     mkdir -p "$(dirname "$KIT_CACHE")" 2>/dev/null
-    printf '%s' "$OUT" > "$KIT_CACHE" 2>/dev/null
+    write_cache_atomic "$KIT_CACHE" "$OUT"
   fi
   KIT_TXT=$(cat "$KIT_CACHE" 2>/dev/null)
   case "$KIT_TXT" in
