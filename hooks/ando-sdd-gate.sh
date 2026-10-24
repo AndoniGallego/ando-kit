@@ -14,8 +14,9 @@
 # $ANDO_SPECS_DIR/<id>.md. Por eso:
 #   - archivo NO existe  → el orquestador no arrancó SDD para esto (tarea trivial,
 #                          o el usuario lo vetó) → gate MUDO. No se nag "te falta la spec".
-#   - archivo existe y status=approved → OK, mudo.
-#   - archivo existe y status != approved → BLOCK: hay una spec a medias para esta rama.
+#   - archivo existe y status=approved|done → OK, mudo (done implica que pasó por approved;
+#                          un arreglo posterior en la misma rama no debe obligar a reabrirla).
+#   - archivo existe y status otro → BLOCK: hay una spec a medias para esta rama.
 #
 # OPT-IN: sin ANDO_SPECS_DIR seteado, el chequeo de spec se omite (solo corre el
 # chequeo de specs/ dentro del repo, y ese es siempre advertencia, nunca BLOCK).
@@ -50,7 +51,7 @@ if [ -n "$ID" ] && [ -n "${ANDO_SPECS_DIR:-}" ]; then
         SPEC_FILE="$ANDO_SPECS_DIR/$ID.md"
         if [ -f "$SPEC_FILE" ]; then
           STATUS=$(awk '/^---[[:space:]]*$/{n++; next} n==1 && /^status:/{sub(/^status:[ \t]*/,""); sub(/[ \t]+$/,""); print; exit}' "$SPEC_FILE")
-          if [ "$STATUS" != "approved" ]; then
+          if [ "$STATUS" != "approved" ] && [ "$STATUS" != "done" ]; then
             echo "BLOCK: la spec $SPEC_FILE está en '${STATUS:-sin frontmatter}' y es requerida antes de pushear $BRANCH. Aprobala (sdd-start la retoma desde el paso de revisión), o archivala/borrala si decidiste no seguir SDD para esta tarea."
           fi
         fi
