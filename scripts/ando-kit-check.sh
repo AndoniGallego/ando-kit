@@ -167,11 +167,17 @@ fi
 if command -v claude >/dev/null 2>&1; then
   # `mcp list` hace health-check de todos los servers y tarda; `mcp get` consulta solo uno.
   TO=""; timeout --version >/dev/null 2>&1 && TO="timeout 10"
-  engram_mcp=""
+  # Tres estados: registrado (rc 0), ausente (rc 1 + "No MCP server named"), no verificable (el resto).
+  engram_mcp=""; unverifiable=0
   for n in engram plugin:engram:engram; do
-    if out=$($TO claude mcp get "$n" 2>/dev/null); then engram_mcp="$out"; break; fi
+    out=$($TO claude mcp get "$n" </dev/null 2>&1); rc=$?
+    if [ "$rc" = 0 ]; then engram_mcp="$out"; break
+    elif [ "$rc" = 1 ] && printf '%s\n' "$out" | grep -q 'No MCP server named'; then :
+    else unverifiable=1; fi
   done
-  if [ -z "$engram_mcp" ]; then
+  if [ -z "$engram_mcp" ] && [ "$unverifiable" = 1 ]; then
+    info "Engram MCP no verificable (claude mcp get falló o no respondió a tiempo) — corré 'claude mcp get engram' a mano; no se asume ausente"
+  elif [ -z "$engram_mcp" ]; then
     info "Engram MCP no registrado (opcional — la memoria persistente no estará disponible)"
   elif printf '%s\n' "$engram_mcp" | grep -qiE '^[[:space:]]*status:.*connected'; then
     ok "Engram MCP conectado"
