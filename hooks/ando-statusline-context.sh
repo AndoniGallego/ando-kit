@@ -1,43 +1,33 @@
 #!/bin/bash
-# Statusline de Claude Code — modelo, directorio y % de contexto usado.
-# Visibilidad permanente del umbral de orquestación (80%): por encima, delegar o cerrar fase.
+# Statusline de Claude Code: modelo, directorio y % de contexto del orquestador.
+# Formato: [Modelo] directorio | Ctx: 12% (120k)
+# Umbral visible en permanencia (ANDO_CTX_WARN_PCT, default 80): por encima, delegar o cerrar fase.
+# Mismo valor que lee ando-context-threshold.sh; si difieren, el rojo y el aviso no coinciden.
 #
-# % de contexto = (numerador / denominador), resueltos así:
+# % de contexto = numerador / denominador:
 #
 # NUMERADOR (tokens usados en el contexto actual):
-#   1. input.context_window.total_input_tokens (Claude Code ya lo calcula: incluye cache
-#      reads/writes y excluye ruido de subagentes/compactaciones viejas — es la fuente de
-#      verdad real de "cuánto contexto ocupa la sesión ahora mismo").
-#   2. Fallback: parsear el transcript .jsonl línea por línea (no con `tac | grep -m1`,
-#      que matchea CUALQUIER línea con la substring "usage" sin filtrar de dónde viene),
-#      filtrando estrictamente a mensajes assistant del hilo principal
-#      (type=="assistant" AND isSidechain!=true) y tomando el ÚLTIMO de esos por orden
-#      de aparición. Esto evita dos fuentes de inflación real observadas:
-#        a) Entradas "sidechain" de subagentes (Task tool) que también tienen su propio
-#           bloque "usage" interleavado en el mismo archivo.
-#        b) El turno de resumen que genera un /compact, cuyo "usage.input_tokens" refleja
-#           TODO el contexto pre-compactación que se está resumiendo (potencialmente
-#           cientos de miles de tokens) y no el tamaño real post-compactación. Si ese
-#           turno queda como "el último con la palabra usage", un tail-grep ingenuo lo
-#           toma como numerador y explica lecturas de 300%+ en sesiones largas con
-#           varias compactaciones — no es una suma acumulativa, es tomar el turno
-#           equivocado.
+#   1. input.context_window.total_input_tokens (lo calcula Claude Code: incluye cache reads/writes
+#      y excluye subagentes y compactaciones viejas).
+#   2. Fallback: ultimo mensaje assistant del hilo principal del transcript
+#      (type=="assistant" AND isSidechain!=true). No usar `tac | grep -m1 usage`: matchea turnos de
+#      subagentes y el turno de resumen de un /compact, que refleja el contexto PRE-compactacion
+#      y explica lecturas de 300%+ en sesiones largas.
 #
-# DENOMINADOR (ventana de contexto del modelo activo):
-#   1. input.context_window.context_window_size (Claude Code ya lo calcula por sesión/modelo)
-#   2. Tabla de fallback por nombre de modelo (por si el campo no viniera en el JSON)
-#   3. Default hardcoded si nada de lo anterior está disponible.
+# DENOMINADOR (ventana del modelo activo):
+#   1. input.context_window.context_window_size
+#   2. Tabla por modelo (actualizar si cambia una ventana):
+#      Sonnet 4.6+/5, Opus 4.x/5.x, Fable 5 -> 1M; Haiku 4.5 -> 200k; desconocido -> 1M.
 #
-# Fallback table — actualizar si aparece un modelo nuevo o cambia su ventana:
-#   Sonnet 4.6/4.7/4.8, Sonnet 5, Opus 4.x/5.x, Fable 5 -> 1,000,000 tokens
-#   Haiku 4.5                                           -> 200,000 tokens
-#   Default (modelo desconocido)                        -> 1,000,000 (Opus 5.5 es el modelo
-#                                                           de sesión actual; ajustar si cambia)
+# Segmento del kit (version / desactualizado) desde ~/.claude/.ando-kit-status. Solo jq (sin python3:
+# en Windows puede ser el alias de Microsoft Store que no corre nada).
 
 INPUT=$(cat)
 MODEL=$(echo "$INPUT" | jq -r '.model.display_name // "Claude"')
 MODEL_ID=$(echo "$INPUT" | jq -r '.model.id // ""')
-DIR=$(basename "$(echo "$INPUT" | jq -r '.workspace.current_dir // "~"')")
+DIR=$(echo "$INPUT" | jq -r '.workspace.current_dir // .cwd // "~"')
+DIR="${DIR//\\//}"
+DIR="${DIR##*/}"
 TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 
 CONTEXT_WINDOW=$(echo "$INPUT" | jq -r '.context_window.context_window_size // empty')
@@ -51,7 +41,6 @@ fi
 
 PCT="?"
 TOKENS=$(echo "$INPUT" | jq -r '.context_window.total_input_tokens // empty')
-
 if [ -z "$TOKENS" ] || [ "$TOKENS" = "null" ]; then
   if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
     TOKENS=$(jq -rc 'select(.type == "assistant" and (.isSidechain != true)) |
@@ -62,9 +51,17 @@ if [ -z "$TOKENS" ] || [ "$TOKENS" = "null" ]; then
   fi
 fi
 
+TOKENS_K=""
 if [ -n "$TOKENS" ] && [ "$TOKENS" != "null" ] && [ "$TOKENS" -gt 0 ] 2>/dev/null; then
   PCT=$(( TOKENS * 100 / CONTEXT_WINDOW ))
+  TOKENS_K="$(( TOKENS / 1000 ))k"
 fi
+
+WARN_PCT="${ANDO_CTX_WARN_PCT:-80}"
+CAUTION_PCT="${ANDO_CTX_CAUTION_PCT:-60}"
+[ "$CAUTION_PCT" -lt "$WARN_PCT" ] 2>/dev/null || CAUTION_PCT=$(( WARN_PCT * 6 / 10 ))
+CTX_WARN_TOKENS=$(( CONTEXT_WINDOW * WARN_PCT / 100 ))
+CTX_CAUTION_TOKENS=$(( CONTEXT_WINDOW * CAUTION_PCT / 100 ))
 
 CYAN='\033[36m'
 MAGENTA='\033[35m'
@@ -73,30 +70,28 @@ BOLD='\033[1m'
 GRAY='\033[90m'
 YELLOW='\033[33m'
 
-# Porcentaje: verde <60, amarillo 60-79, rojo ≥80
+# Verde bajo CAUTION (default 60%), amarillo hasta WARN, rojo desde WARN.
+MARK=""
 if [ "$PCT" = "?" ]; then
-  PCT_COLOR='\033[90m'
-  MARK=""
-elif [ "$PCT" -ge 80 ] 2>/dev/null; then
+  PCT_COLOR="$GRAY"
+elif [ "$TOKENS" -ge "$CTX_WARN_TOKENS" ] 2>/dev/null; then
   PCT_COLOR='\033[31m'
   MARK=" ${BOLD}\033[31m⚠ DELEGAR${RESET}"
-elif [ "$PCT" -ge 60 ] 2>/dev/null; then
+elif [ "$TOKENS" -ge "$CTX_CAUTION_TOKENS" ] 2>/dev/null; then
   PCT_COLOR='\033[33m'
-  MARK=""
 else
   PCT_COLOR='\033[32m'
-  MARK=""
 fi
 
-# --- Estado del kit: versión + drift vs upstream. Cacheado (máx 1 refresh / 5 min) —
-#     NUNCA corre git en cada render, y NUNCA hace fetch (sin red en la statusline):
-#     el "↑N" refleja lo que git ya sabe del remoto tras el último fetch/pull.
 write_cache_atomic() { # ARCHIVO CONTENIDO — temporal en el mismo dir + mv, para que otra instancia no lea a medias
   local tmp
   tmp=$(mktemp "$1.XXXXXX" 2>/dev/null) || return 0
   if printf '%s' "$2" > "$tmp" 2>/dev/null && mv -f "$tmp" "$1" 2>/dev/null; then :; else rm -f "$tmp" 2>/dev/null; fi
   return 0
 }
+
+# Estado del kit: version + drift vs upstream. Cacheado (max 1 refresh / 5 min); nunca hace fetch
+# (sin red en la statusline): el "↑N" refleja lo que git ya sabe del remoto tras el ultimo fetch/pull.
 KIT_MARK=""
 KIT_DIR="${ANDO_KIT_DIR:-}"
 if [ -n "$KIT_DIR" ] && [ -d "$KIT_DIR/.git" ]; then
@@ -117,4 +112,5 @@ if [ -n "$KIT_DIR" ] && [ -d "$KIT_DIR/.git" ]; then
   esac
 fi
 
-printf "${CYAN}[%s]${RESET} ${MAGENTA}%s${RESET} | Ctx orquestador: ${PCT_COLOR}%s%%${RESET}%b%b\n" "$MODEL" "$DIR" "$PCT" "$MARK" "$KIT_MARK"
+printf "${CYAN}[%s]${RESET} ${MAGENTA}%s${RESET} | ${CYAN}Ctx${RESET}: ${PCT_COLOR}%s%%%s${RESET}%b%b\n" \
+  "$MODEL" "$DIR" "$PCT" "${TOKENS_K:+ ($TOKENS_K)}" "$MARK" "$KIT_MARK"

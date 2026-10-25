@@ -180,7 +180,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 |---|---|---|
 | `ando-kit-sync.sh` | PostToolUse `Write\|Edit` | Sincroniza en ambas direcciones `skills/` `agents/` `hooks/` entre `~/.claude` y el repo del kit (`ANDO_KIT_DIR`). Editás en un lado, aparece en el otro. |
 | `ando-delegation-reminder.sh` | UserPromptSubmit | Detecta de qué trata tu mensaje y le recuerda al orquestador qué skill/agent delegar — y, si hay intención de implementar, que evalúe el Paso 0 del flujo SDD. Silencioso si no matchea nada. |
-| `ando-context-threshold.sh` | UserPromptSubmit | Al superar el 85% de la ventana de contexto, inyecta un aviso para cerrar la fase actual (commit + resumen a Engram) antes de arrancar trabajo nuevo. |
+| `ando-context-threshold.sh` | UserPromptSubmit | Avisa una vez por banda: al 70% (`ANDO_CTX_SAVE_PCT`) pide guardar el resumen de sesión; al 80% (`ANDO_CTX_WARN_PCT`) pide cerrar la fase (commit + resumen a Engram) y compactar. |
 | `ando-engram-check-reminder.sh` | UserPromptSubmit | Recuerda consultar la memoria persistente (Engram) antes de afirmar "no tengo contexto de esto". |
 | `ando-prepush-check.sh` | PreToolUse `Bash` (`git push`) | Advierte sobre Conventional Commits y TODO/FIXME (el push procede). Promueve a **bloqueo** las líneas `BLOCK:` del gate SDD, y bloquea directo si `gitleaks` (opcional, si está instalado) encuentra un secreto real en los commits a pushear. |
 | `ando-sdd-gate.sh` | *(helper de `ando-prepush-check.sh`, no se registra)* | Si estás en `feature/<id>` y existe `$ANDO_SPECS_DIR/<id>.md` sin `approved` → emite `BLOCK:` (el push no procede hasta aprobar/archivar la spec). Sin spec para esa rama → mudo. Opt-in vía `ANDO_SPECS_DIR`. |
@@ -189,7 +189,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 | `ando-env-guard.sh` | PreToolUse `Read\|Bash\|Grep\|Glob` | Deniega la lectura de `.env`, `.envrc` y `.env.*` reales por cualquier herramienta (Read, cat/grep en Bash, Grep, Glob, búsquedas recursivas, `docker compose config`); deja pasar `.env.example`/`.dist`/`.sample`/`.template`. Falla cerrado. Necesita `jq` o un Python real (en Windows, el alias de la Store no cuenta; prueba `python3`, `python` y `py -3`). |
 | `ando-kit-update-check.sh` | SessionStart | Sustituto de cron (Windows no tiene): como mucho 1 vez cada 12hs, hace `git fetch` del kit y avisa si hay novedades. Con `ANDO_KIT_AUTOUPDATE=1`, hace pull+install solo si el working tree está limpio. Ver "Autoupdate" abajo. |
 | `ando-doctor-sessionstart.sh` | SessionStart | Corre `kit-doctor` al iniciar sesión. Silencioso si todo OK; avisa sólo si hay ⚠️/❌. Registrarlo aparte (ver snippet de `install.sh`). |
-| `ando-statusline-context.sh` | StatusLine | Modelo, directorio y % de contexto usado, con umbrales de color y aviso ⚠ DELEGAR en ≥85%. |
+| `ando-statusline-context.sh` | StatusLine | Modelo, directorio y % de contexto usado, con umbrales de color y formato `[Modelo] dir | Ctx: N% (Nk)`, rojo + ⚠ DELEGAR desde `ANDO_CTX_WARN_PCT` (80%). |
 
 ---
 

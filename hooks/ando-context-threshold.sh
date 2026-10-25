@@ -1,27 +1,15 @@
 #!/bin/bash
-# ando-context-threshold.sh — Hook UserPromptSubmit
+# UserPromptSubmit hook: avisa al orquestador antes de que el contexto crezca de mas.
+# Umbrales como % de la ventana del modelo. Dos bandas, cada una avisa UNA vez por sesion:
+#   SAVE (ANDO_CTX_SAVE_PCT, default 70%): guardar el resumen de sesion en memoria YA.
+#   WARN (ANDO_CTX_WARN_PCT, default 80%): cerrar fase y compactar / abrir sesion nueva.
+# ANDO_CONTEXT_THRESHOLD_PCT (nombre anterior) se sigue aceptando como alias de WARN.
+# La statusline lee el mismo ANDO_CTX_WARN_PCT para el rojo.
 #
-# Alerta de contexto al superar el umbral (default 80%): inyecta un systemMessage
-# para que Claude cierre la fase actual antes de arrancar trabajo nuevo.
-#
-# % de contexto = mismo cálculo que ando-statusline-context.sh (ver ese script para
-# el detalle completo del numerador/denominador). Resumen: usar
-# context_window.total_input_tokens (ya excluye ruido de subagentes y compactaciones
-# viejas); si no viene en el JSON, parsear el transcript filtrando estrictamente a
-# mensajes assistant del hilo principal (type=="assistant" AND isSidechain!=true) y
-# tomando el ÚLTIMO por orden de aparición — NO `tac | grep -m1 "usage"`, que
-# matchea cualquier línea con esa substring sin filtrar de dónde viene. El
-# denominador tampoco se hardcodea a 200k: depende del modelo activo (Sonnet
-# 4.6-5/Opus/Fable = 1M, Haiku 4.5 = 200k).
-#
-# El hook nunca debe bloquear el flujo: cualquier fallo termina en exit 0.
-
-set -uo pipefail
-
-THRESHOLD_PCT="${ANDO_CONTEXT_THRESHOLD_PCT:-80}"
+# TOKENS: misma resolucion que ando-statusline-context.sh (total_input_tokens del input; si no,
+# ultimo turno no-sidechain del transcript de esta sesion). El hook nunca bloquea: ante un fallo, exit 0.
 
 command -v jq >/dev/null 2>&1 || exit 0
-
 INPUT=$(cat 2>/dev/null || true)
 [ -z "$INPUT" ] && exit 0
 
@@ -35,14 +23,22 @@ if [ -z "$CONTEXT_WINDOW" ] || [ "$CONTEXT_WINDOW" = "null" ]; then
   esac
 fi
 
+WARN_PCT="${ANDO_CTX_WARN_PCT:-${ANDO_CONTEXT_THRESHOLD_PCT:-80}}"
+SAVE_PCT="${ANDO_CTX_SAVE_PCT:-70}"
+[ "$SAVE_PCT" -lt "$WARN_PCT" ] 2>/dev/null || SAVE_PCT=$(( WARN_PCT * 7 / 8 ))
+SAVE_TOKENS=$(( CONTEXT_WINDOW * SAVE_PCT / 100 ))
+WARN_TOKENS=$(( CONTEXT_WINDOW * WARN_PCT / 100 ))
+
 TOKENS=$(echo "$INPUT" | jq -r '.context_window.total_input_tokens // empty' 2>/dev/null)
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null | tr -cd 'A-Za-z0-9_-')
 
 if [ -z "$TOKENS" ] || [ "$TOKENS" = "null" ]; then
   TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+  # Solo el transcript de este session_id: caer al .jsonl mas reciente reportaba el contexto de otra sesion.
   if [ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]; then
-    TRANSCRIPT=$(ls -t "$HOME/.claude/projects/"*/*.jsonl 2>/dev/null | head -1)
+    TRANSCRIPT=""
+    [ -n "$SESSION_ID" ] && TRANSCRIPT=$(ls "$HOME/.claude/projects/"*/"$SESSION_ID.jsonl" 2>/dev/null | head -1)
   fi
-
   if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
     TOKENS=$(jq -rc 'select(.type == "assistant" and (.isSidechain != true)) |
         (.message.usage // .usage) as $u
@@ -52,10 +48,30 @@ if [ -z "$TOKENS" ] || [ "$TOKENS" = "null" ]; then
   fi
 fi
 
+STATE_DIR="${ANDO_CTX_STATE_DIR:-${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}}"
+MARKER=""
+[ -n "$SESSION_ID" ] && MARKER="$STATE_DIR/ando-ctx-band-$SESSION_ID"
+
 if [ -z "$TOKENS" ] || [ "$TOKENS" = "null" ]; then exit 0; fi
 [ "$TOKENS" -le 0 ] 2>/dev/null && exit 0
 
-PCT=$(( TOKENS * 100 / CONTEXT_WINDOW ))
-[ "$PCT" -lt "$THRESHOLD_PCT" ] 2>/dev/null && exit 0
+if [ "$TOKENS" -lt "$SAVE_TOKENS" ] 2>/dev/null; then
+  [ -n "$MARKER" ] && rm -f "$MARKER" 2>/dev/null
+  exit 0
+fi
 
-printf '{"systemMessage": "⚠ CONTEXTO AL %s%% — UMBRAL SUPERADO. Antes de arrancar trabajo nuevo: (1) commiteá lo que esté en curso, (2) guardá contexto en Engram con mem_session_summary, (3) avisá qué quedó pendiente para continuar en sesión nueva. No acumules más contexto."}\n' "$PCT"
+if [ "$TOKENS" -ge "$WARN_TOKENS" ] 2>/dev/null; then BAND=warn; else BAND=save; fi
+
+LAST=""
+[ -n "$MARKER" ] && [ -f "$MARKER" ] && LAST=$(cat "$MARKER" 2>/dev/null)
+if [ "$LAST" = "$BAND" ] || { [ "$LAST" = "warn" ] && [ "$BAND" = "save" ]; }; then exit 0; fi
+[ -n "$MARKER" ] && echo "$BAND" > "$MARKER" 2>/dev/null
+
+K=$(( TOKENS / 1000 ))
+PCT=$(( TOKENS * 100 / CONTEXT_WINDOW ))
+if [ "$BAND" = "save" ]; then
+  MSG=$(printf 'CONTEXTO EN %sk TOKENS (%s%% de la ventana), el umbral es %s%% (%sk). Antes de responder este mensaje: (1) commitea lo que este en curso si corresponde, (2) guarda en memoria (mem_session_summary) un resumen de sesion con el estado (que se hizo, decisiones, archivos tocados, proximo paso concreto), (3) recien entonces segui con el pedido. Delega el trabajo restante a agentes; no releas archivos ya cubiertos.' "$K" "$PCT" "$WARN_PCT" "$(( WARN_TOKENS / 1000 ))")
+else
+  MSG=$(printf 'CONTEXTO EN %sk TOKENS (%s%% de la ventana), UMBRAL SUPERADO (%s%%, %sk). Si no hay un resumen de sesion reciente en memoria, guardalo ahora. Cerra la fase actual (commit + mem_session_summary) y avisale al usuario que compacte (/compact) o abra sesion nueva. No lances agentes nuevos desde un contexto de este tamano.' "$K" "$PCT" "$WARN_PCT" "$(( WARN_TOKENS / 1000 ))")
+fi
+jq -n --arg msg "$MSG" '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: $msg}}'
