@@ -3,6 +3,19 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 Versionado semántico.
 
+## [2.12.0] - 2026-10-24
+
+### Added
+- Hook `hooks/ando-env-guard.sh` (PreToolUse sobre `Read|Bash|Grep|Glob`) que niega la lectura de archivos `.env` reales. Portado del env-guard del aperkit v2.30.0, con soporte de rutas de Windows (barra invertida y `timeout.exe`) y detección del Python real (`python3`, `python` o `py -3`) por el alias de la Microsoft Store. Cableado en `install.sh` con reglas allow/ask/deny para `.env`; `kit-doctor` verifica que esté registrado en `settings.json`. La regla `Read(**/.env.*)` en deny se mantiene hasta verificar el hook en vivo.
+
+### Changed
+- Statusline y hook de umbral de contexto portados del aperkit. La statusline muestra `[Modelo] dir | Ctx: N% (Nk)`. Umbrales configurables: `ANDO_CTX_CAUTION_PCT` (60), `ANDO_CTX_SAVE_PCT` (70) y `ANDO_CTX_WARN_PCT` (80). El hook avisa una vez por banda y por sesión, por `additionalContext`.
+
+### Fixed
+- Gate SDD (`ando-sdd-gate.sh`): una spec en estado `done` ya no bloquea el push.
+- Chequeo de Engram MCP con tercer estado (registrado, ausente, no verificable) en `ando-kit-check.sh` y en el fallback de `kit-doctor`.
+- Caches de estado escritos de forma atómica (temporal más `mv`) en `ando-statusline-context.sh` y `ando-kit-update-check.sh`.
+
 ## [2.11.0] - 2026-10-16
 
 ### Added
