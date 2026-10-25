@@ -189,7 +189,7 @@ Corren en **contexto aislado** y cierran con un envelope AOP v2 (JSON de una lí
 | `ando-env-guard.sh` | PreToolUse `Read\|Bash\|Grep\|Glob` | Deniega la lectura de `.env`, `.envrc` y `.env.*` reales por cualquier herramienta (Read, cat/grep en Bash, Grep, Glob, búsquedas recursivas, `docker compose config`); deja pasar `.env.example`/`.dist`/`.sample`/`.template`. Falla cerrado. Necesita `jq` o un Python real (en Windows, el alias de la Store no cuenta; prueba `python3`, `python` y `py -3`). |
 | `ando-kit-update-check.sh` | SessionStart | Sustituto de cron (Windows no tiene): como mucho 1 vez cada 12hs, hace `git fetch` del kit y avisa si hay novedades. Con `ANDO_KIT_AUTOUPDATE=1`, hace pull+install solo si el working tree está limpio. Ver "Autoupdate" abajo. |
 | `ando-doctor-sessionstart.sh` | SessionStart | Corre `kit-doctor` al iniciar sesión. Silencioso si todo OK; avisa sólo si hay ⚠️/❌. Registrarlo aparte (ver snippet de `install.sh`). |
-| `ando-statusline-context.sh` | StatusLine | Modelo, directorio y % de contexto usado, con umbrales de color y formato `[Modelo] dir | Ctx: N% (Nk)`, rojo + ⚠ DELEGAR desde `ANDO_CTX_WARN_PCT` (80%). |
+| `ando-statusline-context.sh` | StatusLine | Modelo, directorio y % de contexto usado, con umbrales de color y formato `[Modelo] dir \| Ctx: N% (Nk)`, rojo + ⚠ DELEGAR desde `ANDO_CTX_WARN_PCT` (80%). |
 
 ---
 
